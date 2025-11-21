@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Montserrat', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -87,5 +90,44 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("daisyui")],
+  daisyui: {
+    themes: [
+      {
+        light: {
+          "primary": "#3b82f6",
+          "secondary": "#8b5cf6",
+          "accent": "#f59e0b",
+          "neutral": "#1f2937",
+          "base-100": "#ffffff",
+          "info": "#0ea5e9",
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error": "#ef4444",
+        },
+        dark: {
+          "primary": "#3b82f6",
+          "secondary": "#8b5cf6",
+          "accent": "#f59e0b",
+          "neutral": "#f3f4f6",
+          "base-100": "#1f2937",
+          "info": "#0ea5e9",
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error": "#ef4444",
+        },
+        sport: {
+          "primary": "#f97316",
+          "secondary": "#ef4444",
+          "accent": "#fbbf24",
+          "neutral": "#1f2937",
+          "base-100": "#ffffff",
+          "info": "#06b6d4",
+          "success": "#22c55e",
+          "warning": "#f59e0b",
+          "error": "#dc2626",
+        },
+      },
+    ],
+  },
 } satisfies Config;
