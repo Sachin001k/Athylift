@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Upload, X, Loader2, Image as ImageIcon, Video, Link2, Smile, Hash, Users, Clock3, Globe2, Tag, AtSign } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, Tag, Share2, Users, Globe2, X, Hash, Paperclip } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const MAX_CHARS = 1300;
+const MAX_CHARS = 300;
 
 const AddPost = () => {
   const { toast } = useToast();
-  const [headline, setHeadline] = useState('');
   const [content, setContent] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [attachmentType, setAttachmentType] = useState<'image' | 'video' | null>(null);
-  const [linkUrl, setLinkUrl] = useState('');
-  const [audience, setAudience] = useState<'connections' | 'public' | 'private'>('connections');
+  const [attachment, setAttachment] = useState<{ kind: 'image' | 'video' | 'file'; url?: string; name?: string } | null>(null);
+  const [audience, setAudience] = useState<'anyone' | 'connections'>('anyone');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
@@ -21,143 +18,163 @@ const AddPost = () => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file) handleFile(file);
+  };
+
+  const handleFile = (file: File) => {
+    const kind = file.type.startsWith('image/')
+      ? 'image'
+      : file.type.startsWith('video/')
+      ? 'video'
+      : 'file';
+
+    if (kind === 'image' || kind === 'video') {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setAttachmentType('image');
-      };
+      reader.onloadend = () => setAttachment({ kind, url: reader.result as string, name: file.name });
       reader.readAsDataURL(file);
+    } else {
+      setAttachment({ kind, name: file.name });
     }
   };
 
-  const handleRemoveMedia = () => {
-    setImagePreview(null);
-    setAttachmentType(null);
+  const removeAttachment = () => setAttachment(null);
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   };
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const handleAddHashtag = () => {
-    if (hashtagInput.trim() && !hashtags.includes(hashtagInput.trim())) {
-      setHashtags([...hashtags, hashtagInput.trim()]);
-      setHashtagInput('');
-    }
-  };
-
-  const disablePost = !content.trim() && !headline.trim();
-
-  const handleSave = async () => {
-    if (disablePost) {
+  const handleSubmit = async () => {
+    if (!content.trim() && !attachment) {
       toast({
-        title: 'Add a thought first',
-        description: 'Write something or add media to share.',
+        title: 'Add something first',
+        description: 'Write a post or attach a photo.',
         variant: 'destructive',
       });
       return;
     }
-
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({
-      title: 'Shared to feed',
-      description: 'Your post is live for your audience.',
-    });
-
+    await new Promise((r) => setTimeout(r, 1200));
+    toast({ title: 'Posted', description: 'Your update is live.' });
     setLoading(false);
-    setHeadline('');
     setContent('');
-    setImagePreview(null);
-    setAttachmentType(null);
-    setLinkUrl('');
+    setAttachment(null);
     setTags([]);
+    setTagInput('');
     setHashtags([]);
+    setHashtagInput('');
+  };
+
+  const addTag = () => {
+    const value = tagInput.trim();
+    if (!value) return;
+    if (!tags.includes(value)) setTags([...tags, value]);
+    setTagInput('');
+  };
+
+  const addHashtag = () => {
+    const value = hashtagInput.trim().replace(/^#*/, '');
+    if (!value) return;
+    if (!hashtags.includes(value)) setHashtags([...hashtags, value]);
+    setHashtagInput('');
   };
 
   return (
     <Layout showStats={false}>
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-6">Start a post</h1>
+      <div className="container mx-auto px-4 py-10 max-w-4xl">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-base-100 font-semibold">in</div>
+          <div className="leading-tight">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">athlete network</p>
+            <p className="text-lg font-light text-base-content">Create a post</p>
+          </div>
+        </div>
 
-        <div className="card bg-base-100 shadow-xl border border-base-300">
-          <div className="card-body space-y-6">
-            <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="card bg-base-100 shadow-lg border border-base-300 overflow-hidden">
+          <div className="px-5 pt-5 pb-3 flex items-start gap-3">
+            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-base-100 text-sm font-semibold">YO</div>
+            <div className="flex-1">
               <div className="flex items-center gap-2">
-                <div className="avatar placeholder">
-                  <div className="bg-primary text-base-100 rounded-full w-10">
-                    <span>YO</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="font-semibold">You</p>
-                  <select
-                    value={audience}
-                    onChange={(e) => setAudience(e.target.value as typeof audience)}
-                    className="select select-xs select-bordered"
-                  >
-                    <option value="connections">Connections only</option>
-                    <option value="public">Public</option>
-                    <option value="private">Private draft</option>
-                  </select>
-                </div>
+                <span className="text-sm font-semibold text-base-content/90">You</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-base-200 text-muted-foreground uppercase tracking-[0.15em]">
+                  member
+                </span>
               </div>
-              <div className="flex gap-2">
-                <button className={`btn btn-sm ${audience === 'public' ? 'btn-primary text-base-100' : 'btn-ghost'}`} onClick={() => setAudience('public')}>
-                  <Globe2 className="h-4 w-4 mr-1" />
-                  Public
-                </button>
-                <button className={`btn btn-sm ${audience === 'connections' ? 'btn-secondary text-base-100' : 'btn-ghost'}`} onClick={() => setAudience('connections')}>
-                  <Users className="h-4 w-4 mr-1" />
-                  Connections
-                </button>
-              </div>
-            </div>
-
-            <div className="form-control">
-              <input
-                type="text"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                placeholder="Add a headline"
-                className="input input-bordered w-full"
-              />
-            </div>
-
-            <div className="form-control">
-              <textarea
-                className="textarea textarea-bordered h-40"
-                placeholder="What do you want to talk about?"
-                value={content}
-                maxLength={MAX_CHARS}
-                onChange={(e) => setContent(e.target.value)}
-              />
-              <div className="text-right text-xs text-muted-foreground mt-1">{content.length}/{MAX_CHARS}</div>
-            </div>
-
-            {imagePreview && (
-              <div className="relative rounded-lg overflow-hidden border border-base-300">
-                <img src={imagePreview} alt="preview" className="w-full max-h-80 object-cover" />
+              <div className="mt-1 flex flex-wrap gap-2">
                 <button
-                  onClick={handleRemoveMedia}
-                  className="btn btn-circle btn-sm absolute top-2 right-2 bg-error text-base-100"
-                  aria-label="Remove media"
+                  type="button"
+                  onClick={() => setAudience('anyone')}
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] border-primary text-primary"
                 >
-                  <X className="h-4 w-4" />
+                  <Globe2 className="h-3 w-3" />
+                  Anyone
                 </button>
               </div>
-            )}
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text flex items-center gap-2"><Tag className="h-4 w-4" /> Tag people</span>
+          <div className="px-5 pb-3">
+            <textarea
+              rows={5}
+              placeholder="Share an update about your training, match, or progress..."
+              className="w-full resize-none border-0 focus:ring-0 text-sm placeholder:text-muted-foreground text-base-content bg-transparent"
+              maxLength={MAX_CHARS}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>Keep it helpful and respectful.</span>
+              <span>{content.length} / {MAX_CHARS}</span>
+            </div>
+          </div>
+
+          <div
+            className="px-5 pb-3"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <div className="relative overflow-hidden rounded-lg border border-dashed border-base-300 bg-base-200/40 p-4 text-sm text-muted-foreground">
+              {!attachment && (
+                <label className="w-full cursor-pointer flex flex-col items-center justify-center gap-2">
+                  <ImageIcon className="h-6 w-6 text-primary" />
+                  <p>Drag and drop images, videos, or documents, or click to upload</p>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
                 </label>
+              )}
+
+              {attachment && (
+                <div className="relative">
+                  {attachment.kind === 'image' && attachment.url ? (
+                    <img src={attachment.url} alt="preview" className="h-56 w-full object-cover rounded-md" />
+                  ) : attachment.kind === 'video' && attachment.url ? (
+                    <video src={attachment.url} controls className="h-56 w-full rounded-md object-cover" />
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+                      <Paperclip className="h-4 w-4 text-primary" />
+                      <span className="text-sm">{attachment.name || 'Attached file'}</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={removeAttachment}
+                    className="absolute top-2 right-2 rounded-full bg-base-content/80 text-base-100 text-[10px] px-2 py-0.5"
+                  >
+                    remove
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="px-5 pb-3 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-semibold text-base-content mb-1">Tags</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -165,108 +182,78 @@ const AddPost = () => {
                     placeholder="@name"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                   />
-                  <button className="btn btn-outline" type="button" onClick={handleAddTag}>Add</button>
+                  <button className="btn btn-outline" type="button" onClick={addTag}>Add</button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {tags.map((t) => (
-                    <span key={t} className="badge badge-primary badge-outline gap-1">
-                      <AtSign className="h-3 w-3" />{t}
-                    </span>
+                    <span key={t} className="badge badge-primary badge-outline">@{t.replace(/^@/, '')}</span>
                   ))}
                 </div>
               </div>
 
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text flex items-center gap-2"><Hash className="h-4 w-4" /> Hashtags</span>
-                </label>
+              <div>
+                <p className="text-sm font-semibold text-base-content mb-1">Hashtags</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     className="input input-bordered flex-1"
-                    placeholder="#parenting"
+                    placeholder="#topic"
                     value={hashtagInput}
                     onChange={(e) => setHashtagInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddHashtag())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addHashtag())}
                   />
-                  <button className="btn btn-outline" type="button" onClick={handleAddHashtag}>Add</button>
+                  <button className="btn btn-outline" type="button" onClick={addHashtag}>Add</button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {hashtags.map((t) => (
-                    <span key={t} className="badge badge-secondary badge-outline">#{t}</span>
+                    <span key={t} className="badge badge-secondary badge-outline">#{t.replace(/^#/, '')}</span>
                   ))}
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2"><Link2 className="h-4 w-4" /> Add a link</span>
-              </label>
-              <input
-                type="url"
-                className="input input-bordered w-full"
-                placeholder="https://"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-3 items-center border border-base-300 rounded-lg p-3 bg-base-200/60">
-              <label className="btn btn-ghost btn-sm gap-2">
-                <ImageIcon className="h-4 w-4 text-primary" />
-                Photo
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
-              <button className={`btn btn-ghost btn-sm gap-2 ${attachmentType === 'video' ? 'text-primary' : ''}`} onClick={() => setAttachmentType('video')}>
-                <Video className="h-4 w-4 text-secondary" />
-                Video
-              </button>
-              <button className="btn btn-ghost btn-sm gap-2">
-                <Smile className="h-4 w-4 text-accent" />
-                Feeling/Activity
-              </button>
-              <button className="btn btn-ghost btn-sm gap-2">
-                <Clock3 className="h-4 w-4 text-muted-foreground" />
-                Schedule
-              </button>
-            </div>
-
-            <div className="card-actions justify-end gap-2">
+          <div className="border-t border-base-200 px-5 py-3 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="inline-flex items-center gap-1 cursor-pointer hover:text-primary transition">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                  <ImageIcon className="h-4 w-4" />
+                  <span>photo</span>
+                </label>
+                <button type="button" className="inline-flex items-center gap-1 hover:text-primary transition">
+                  <Tag className="h-4 w-4" />
+                  <span>tag</span>
+                </button>
+                <button type="button" className="inline-flex items-center gap-1 hover:text-primary transition">
+                  <Share2 className="h-4 w-4" />
+                  <span>share</span>
+                </button>
+              </div>
               <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setHeadline('');
-                  setContent('');
-                  setImagePreview(null);
-                  setAttachmentType(null);
-                  setLinkUrl('');
-                  setTags([]);
-                  setHashtags([]);
-                }}
+                type="button"
+                onClick={handleSubmit}
+                className="inline-flex items-center justify-center rounded-full bg-primary text-base-100 text-sm font-light px-4 py-1.5 hover:bg-primary/90 transition disabled:opacity-60"
                 disabled={loading}
-              >
-                Discard
-              </button>
-              <button
-                onClick={handleSave}
-                className="btn btn-primary text-base-100"
-                disabled={loading || disablePost}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Posting...
                   </>
                 ) : (
                   <>
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4 mr-1" />
                     Post
                   </>
                 )}
               </button>
+            </div>
+            <div className="text-[11px] text-muted-foreground flex items-center justify-between">
+              <span>Audience: {audience === 'anyone' ? 'Anyone' : 'Connections only'}</span>
+              <span>{content.length} / {MAX_CHARS}</span>
             </div>
           </div>
         </div>

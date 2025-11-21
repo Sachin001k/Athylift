@@ -82,6 +82,9 @@ const Explore = () => {
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const lastScrollRef = useRef(0);
+  const [commentModalPostId, setCommentModalPostId] = useState<number | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [comments, setComments] = useState<{ [postId: number]: string[] }>({});
 
   const videoPosts = posts.filter((post) => post.video);
 
@@ -150,6 +153,20 @@ const Explore = () => {
 
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
+
+  const openCommentModal = (postId: number) => {
+    setCommentModalPostId(postId);
+    setCommentDraft('');
+  };
+
+  const submitComment = () => {
+    if (!commentModalPostId || !commentDraft.trim()) return;
+    setComments((prev) => ({
+      ...prev,
+      [commentModalPostId]: [...(prev[commentModalPostId] || []), commentDraft.trim()],
+    }));
+    setCommentDraft('');
+  };
 
   const nextReel = () => setActiveReelIndex((prev) => (prev + 1) % reels.length);
   const prevReel = () => setActiveReelIndex((prev) => (prev - 1 + reels.length) % reels.length);
@@ -262,12 +279,12 @@ const Explore = () => {
                     <span>{post.likes + (liked.includes(post.id) ? 1 : 0)}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2">
+                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
                     <MessageCircle className="h-5 w-5" />
-                    <span>{post.comments}</span>
+                    <span>{comments[post.id]?.length ?? post.comments}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2">
+                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
                     <Share2 className="h-5 w-5" />
                   </button>
 
@@ -409,6 +426,45 @@ const Explore = () => {
               <X className="h-4 w-4" />
             </button>
             <img src={imageModalUrl} alt="Post" className="w-full h-full object-contain bg-black max-h-[80vh]" />
+          </div>
+        </div>
+      )}
+
+      {commentModalPostId !== null && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
+            <button
+              onClick={() => setCommentModalPostId(null)}
+              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="p-6 space-y-4">
+              <h3 className="text-xl font-semibold">Comments</h3>
+              <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
+                {(comments[commentModalPostId] || []).length === 0 && (
+                  <p className="text-sm text-muted-foreground">Be the first to comment.</p>
+                )}
+                {(comments[commentModalPostId] || []).map((c, idx) => (
+                  <div key={idx} className="rounded-lg border border-base-300 p-2 text-sm">
+                    {c}
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <textarea
+                  className="textarea textarea-bordered w-full"
+                  rows={3}
+                  placeholder="Add your comment..."
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <button className="btn btn-ghost btn-sm" onClick={() => setCommentModalPostId(null)}>Close</button>
+                  <button className="btn btn-primary btn-sm text-base-100" onClick={submitComment}>Post Comment</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

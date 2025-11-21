@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, Flame, Menu } from 'lucide-react';
+import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -23,9 +23,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
       case 'light':
         return <Sun className="h-5 w-5" />;
       case 'dark':
+      default:
         return <Moon className="h-5 w-5" />;
-      case 'sport':
-        return <Flame className="h-5 w-5" />;
     }
   };
 
@@ -84,10 +83,6 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                 <Moon className="mr-2 h-4 w-4" />
                 Dark
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('sport')} className="text-base-content">
-                <Flame className="mr-2 h-4 w-4" />
-                Sport
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -112,9 +107,6 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
               <DropdownMenuItem asChild>
                 <Link to="/profile" className="text-base-content">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/profile" className="text-base-content">Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/login" className="text-base-content">Logout</Link>
