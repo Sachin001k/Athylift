@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Compass, Plus, User, Info, Shield, Lock } from 'lucide-react';
+import { Home, User, FileText, Plus, Info, FileQuestion, Shield, Lock } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -8,15 +8,20 @@ interface SidebarProps {
 
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const menuItems = [
-    { icon: Compass, label: 'Explore', path: '/explore' },
-    { icon: Plus, label: 'Add Post', path: '/add-post' },
+    { icon: Home, label: 'Feed', path: '/explore' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 
+  const contentItems = [
+    { icon: Plus, label: 'Post', path: '/add-post' },
+    { icon: FileText, label: 'My Posts', path: '/my-posts' },
+  ];
+
   const metaItems = [
-    { icon: Info, label: 'About', path: '/about' },
+    { icon: Info, label: 'About us', path: '/about' },
+    { icon: FileQuestion, label: 'Terms & Conditions', path: '/terms' },
     { icon: Shield, label: 'Disclaimer', path: '/disclaimer' },
-    { icon: Lock, label: 'Privacy Policy', path: '/privacy' },
+    { icon: FileQuestion, label: 'FAQs', path: '/faq' },
   ];
 
   return (
@@ -35,17 +40,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <nav className="flex flex-col gap-2 p-4">
-          <div className="menu">
+        <nav className="flex flex-col gap-6 p-6">
+          <div className="space-y-1">
             {menuItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={() => onClose()}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
+                  `flex items-center gap-3 rounded-lg px-4 py-2.5 transition-colors text-base-content ${
                     isActive
-                      ? 'bg-primary text-primary-foreground font-semibold'
+                      ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-base-200'
                   }`
                 }
@@ -56,26 +61,50 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             ))}
           </div>
 
-          <div className="divider">Meta</div>
+          <div>
+            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Content Management</h3>
+            <div className="space-y-1">
+              {contentItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => onClose()}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-4 py-2.5 transition-colors text-base-content ml-4 ${
+                      isActive
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'hover:bg-base-200'
+                    }`
+                  }
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
 
-          <div className="menu">
-            {metaItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => onClose()}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground font-semibold'
-                      : 'hover:bg-base-200'
-                  }`
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+          <div>
+            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Meta</h3>
+            <div className="space-y-1">
+              {metaItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => onClose()}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-4 py-2.5 transition-colors text-base-content ml-4 ${
+                      isActive
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'hover:bg-base-200'
+                    }`
+                  }
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
           </div>
         </nav>
       </aside>
