@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { Navbar } from '@/components/Navbar';
 
 const Pricing = () => {
   const plans = [
@@ -52,12 +53,13 @@ const Pricing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-base-200 py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen bg-base-200">
+      <Navbar onMenuClick={() => {}} />
+      <div className="container mx-auto max-w-6xl py-12 px-4">
         {/* Hero */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-4">Simple, Transparent Pricing</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Simple, Transparent Pricing</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-serif">
             Choose the plan that's right for you. All plans include core features.
           </p>
         </div>

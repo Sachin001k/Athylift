@@ -1,146 +1,127 @@
-import { Shield, Database, Eye, Mail } from 'lucide-react';
+import { Shield, Database, Eye, Mail, Lock } from 'lucide-react';
+import { Navbar } from '@/components/Navbar';
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-base-200 py-12 px-4">
-      <div className="container mx-auto max-w-4xl">
-        {/* Hero */}
-        <div className="card bg-info text-info-content mb-8">
-          <div className="card-body">
-            <div className="flex items-center gap-4">
-              <Shield className="h-12 w-12" />
+    <div className="min-h-screen bg-base-200 text-base-content">
+      <Navbar onMenuClick={() => {}} />
+      <div className="py-12 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="card bg-base-100 shadow-xl mb-6">
+            <div className="card-body flex items-center gap-4">
+              <Shield className="h-12 w-12 text-primary" />
               <div>
-                <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-                <p>Your privacy is important to us</p>
+                <h1 className="text-3xl font-brand tracking-wide mb-2">Privacy Policy</h1>
+                <p className="font-serif">We understand the importance of privacy, especially for sensitive topics.</p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Intro */}
-        <div className="card bg-base-100 shadow-xl mb-6">
-          <div className="card-body">
-            <p className="text-lg">
-              At Athlyft, we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, and safeguard your data.
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Last Updated: January 2025
-            </p>
+          <div className="card bg-base-100 shadow-xl mb-6">
+            <div className="card-body space-y-2 font-serif">
+              <p>Welcome to Athlyt. This Privacy Policy outlines how we collect, use, and protect your data across our platform.</p>
+              <p className="text-sm text-muted-foreground">Last updated: May 7, 2025.</p>
+            </div>
           </div>
-        </div>
 
-        {/* Content Sections */}
-        <div className="space-y-6">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex items-start gap-4">
-                <Database className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h2 className="card-title mb-4">Information We Collect</h2>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Account Information:</strong> Name, email address, and profile details</li>
-                    <li><strong>Content:</strong> Posts, images, and videos you share on the platform</li>
-                    <li><strong>Usage Data:</strong> How you interact with our platform and features you use</li>
-                    <li><strong>Device Information:</strong> Browser type, IP address, and device characteristics</li>
-                  </ul>
+          <div className="space-y-6">
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <div className="flex items-start gap-4">
+                  <Database className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+                  <div className="font-serif">
+                    <h2 className="card-title mb-3">Information We Collect</h2>
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Personal details: name, email address, contact information (optional during account creation).</li>
+                      <li>Profile information: posts, replies, media uploads, parenting topics followed.</li>
+                      <li>Technical data: device type, browser version, IP address, and usage patterns.</li>
+                      <li>Anonymous insights shared via posts or responses.</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex items-start gap-4">
-                <Eye className="h-8 w-8 text-secondary flex-shrink-0 mt-1" />
-                <div>
-                  <h2 className="card-title mb-4">How We Use Your Information</h2>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li>To provide and improve our services</li>
-                    <li>To personalize your experience on Athlyft</li>
-                    <li>To communicate with you about updates and features</li>
-                    <li>To maintain the security and integrity of our platform</li>
-                    <li>To analyze usage patterns and optimize performance</li>
-                  </ul>
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <div className="flex items-start gap-4">
+                  <Eye className="h-8 w-8 text-secondary flex-shrink-0 mt-1" />
+                  <div className="font-serif">
+                    <h2 className="card-title mb-3">How We Use Your Information</h2>
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Provide a secure, customized experience on the platform.</li>
+                      <li>Enable features like personalized feeds, private messages, or anonymous posts.</li>
+                      <li>Monitor content safety and community health.</li>
+                      <li>Suggest therapist connections if a post shows signs of distress (with user consent).</li>
+                    </ul>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body font-serif space-y-3">
+                <div className="flex items-center gap-3">
+                  <Lock className="h-6 w-6 text-primary" />
+                  <h2 className="card-title mb-0">Third-Party Services</h2>
+                </div>
+                <p>We only share data with trusted third parties essential to platform functionality:</p>
+                <ul className="list-disc list-inside space-y-2">
+                  <li>Cloud service providers for hosting and backups.</li>
+                  <li>Analytics tools to improve performance and insights.</li>
+                  <li>Email services to deliver account-related updates.</li>
+                </ul>
+                <p>We never sell your data or share it with advertisers.</p>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <div className="flex items-start gap-4">
+                  <Shield className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+                  <div className="font-serif">
+                    <h2 className="card-title mb-3">Data Protection</h2>
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>End-to-end encryption for sensitive content.</li>
+                      <li>Routine security audits and vulnerability assessments.</li>
+                      <li>Strict access control policies.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body font-serif space-y-3">
+                <h2 className="card-title">Your Rights & Choices</h2>
+                <ul className="list-disc list-inside space-y-2">
+                  <li>Access or update your profile data.</li>
+                  <li>Delete posts or your entire account.</li>
+                  <li>Request complete removal of your personal data.</li>
+                  <li>Opt out of communication or anonymize further.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body font-serif space-y-3">
+                <h2 className="card-title">Updates to This Policy</h2>
+                <p>We may update this Privacy Policy to reflect new features or legal requirements. Major updates will be notified via email or in-app notification.</p>
               </div>
             </div>
           </div>
 
-          <div className="card bg-base-100 shadow-xl">
+          <div className="card bg-primary text-primary-foreground mt-8">
             <div className="card-body">
               <div className="flex items-start gap-4">
-                <Shield className="h-8 w-8 text-success flex-shrink-0 mt-1" />
+                <Mail className="h-8 w-8 flex-shrink-0 mt-1" />
                 <div>
-                  <h2 className="card-title mb-4">Data Protection</h2>
-                  <p className="mb-4">
-                    We implement industry-standard security measures to protect your personal information from unauthorized access, disclosure, alteration, and destruction. This includes:
-                  </p>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li>Encrypted data transmission (HTTPS/SSL)</li>
-                    <li>Secure password storage with hashing</li>
-                    <li>Regular security audits and updates</li>
-                    <li>Limited access to personal data by authorized personnel only</li>
-                  </ul>
+                  <h2 className="card-title mb-2">Questions or concerns?</h2>
+                  <p className="mb-4 font-serif">Reach out to us at <a className="underline" href="mailto:privacy@Athlyt.com">privacy@Athlyt.com</a>. We’re here to help.</p>
+                  <div className="btn btn-sm bg-base-100 text-primary border-none hover:bg-base-100/90 w-max">
+                    Email Privacy Team
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title mb-4">Your Rights</h2>
-              <p className="mb-4">You have the right to:</p>
-              <ul className="list-disc list-inside space-y-2">
-                <li>Access your personal information</li>
-                <li>Update or correct your data</li>
-                <li>Delete your account and associated data</li>
-                <li>Opt-out of marketing communications</li>
-                <li>Export your data in a portable format</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title mb-4">Third-Party Services</h2>
-              <p className="mb-4">
-                Athlyft may use third-party services for analytics, hosting, and other functions. These providers have their own privacy policies and are bound by confidentiality agreements. We do not sell your personal information to third parties.
-              </p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title mb-4">Cookies and Tracking</h2>
-              <p className="mb-4">
-                We use cookies and similar technologies to improve your experience on Athlyft. You can control cookie preferences through your browser settings. However, disabling cookies may affect the functionality of certain features.
-              </p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title mb-4">Changes to This Policy</h2>
-              <p className="mb-4">
-                We may update this Privacy Policy from time to time. We will notify you of any significant changes by posting a notice on our platform or sending you an email. Your continued use of Athlyft after such changes constitutes acceptance of the updated policy.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact */}
-        <div className="card bg-primary text-primary-foreground mt-8">
-          <div className="card-body">
-            <div className="flex items-start gap-4">
-              <Mail className="h-8 w-8 flex-shrink-0 mt-1" />
-              <div>
-                <h2 className="card-title mb-2">Questions About Privacy?</h2>
-                <p className="mb-4">
-                  If you have any questions or concerns about our privacy practices, please don't hesitate to contact us.
-                </p>
-                <a href="mailto:privacy@athlyft.com" className="btn btn-sm bg-white text-primary hover:bg-white/90">
-                  Contact Privacy Team
-                </a>
               </div>
             </div>
           </div>

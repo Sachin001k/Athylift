@@ -2,95 +2,140 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* LinkedIn-inspired design system locked to the approved palette. All colors use HSL from the provided hex values. */
+
+@font-face {
+  font-family: 'Avenir Black';
+  src: local('Avenir Black'), local('Avenir 95 Black'), local('Avenir Next Heavy');
+  font-weight: 900;
+  font-style: normal;
+}
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+  :root,
+  :root[data-theme="light"],
+  [data-theme="light"] {
+    --background: 210 4% 80%; /* Chinese Silver */
+    --foreground: 0 0% 0%; /* Black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 210 4% 80%; /* Chinese Silver */
+    --card-foreground: 0 0% 0%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 210 4% 80%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 201 100% 35%; /* Star Command Blue */
+    --primary-foreground: 210 4% 80%;
 
-    --secondary: 262 83% 58%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 196 100% 43%; /* Rich Electric Blue */
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 2% 53%; /* Taupe Gray */
+    --muted-foreground: 0 0% 0%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 196 100% 43%; /* Rich Electric Blue */
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 0% 0%; /* Black */
+    --destructive-foreground: 210 4% 80%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217 91% 60%;
+    --border: 210 2% 53%;
+    --input: 210 2% 53%;
+    --ring: 201 100% 35%;
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 210 4% 20%; /* Dark Charcoal */
+    --sidebar-foreground: 210 4% 80%;
+    --sidebar-primary: 201 100% 35%;
+    --sidebar-primary-foreground: 210 4% 80%;
+    --sidebar-accent: 210 2% 53%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 210 2% 53%;
+    --sidebar-ring: 196 100% 43%;
   }
 
+  [data-theme="dark"],
   .dark {
-    --background: 222.2 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 0%; /* Black */
+    --foreground: 210 4% 80%; /* Chinese Silver */
 
-    --card: 217.2 33% 17%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 4% 20%; /* Dark Charcoal */
+    --card-foreground: 210 4% 80%;
 
-    --popover: 222.2 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 4% 20%;
+    --popover-foreground: 210 4% 80%;
 
-    --primary: 217 91% 60%;
+    --primary: 201 100% 35%;
+    --primary-foreground: 210 4% 80%;
+
+    --secondary: 196 100% 43%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 210 2% 53%;
+    --muted-foreground: 210 4% 80%;
+
+    --accent: 196 100% 43%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 210 4% 80%;
+
+    --border: 210 2% 53%;
+    --input: 210 2% 53%;
+    --ring: 201 100% 35%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 210 4% 80%;
+    --sidebar-primary: 201 100% 35%;
+    --sidebar-primary-foreground: 210 4% 80%;
+    --sidebar-accent: 210 4% 20%;
+    --sidebar-accent-foreground: 210 4% 80%;
+    --sidebar-border: 210 4% 20%;
+    --sidebar-ring: 196 100% 43%;
+  }
+
+  [data-theme="sport"],
+  .sport {
+    --background: 0 0% 100%; /* White */
+    --foreground: 0 0% 0%; /* Black */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 357 98% 43%; /* Monza Red */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 262 83% 58%;
+    --secondary: 210 100% 40%; /* Science Blue */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 33% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 1% 29%; /* Abbey Gray */
+    --muted-foreground: 0 0% 100%;
 
-    --accent: 38 92% 50%;
+    --accent: 210 1% 29%; /* Abbey Gray */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 33% 17%;
-    --input: 217.2 33% 17%;
-    --ring: 217 91% 60%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 210 1% 29%;
+    --input: 210 1% 29%;
+    --ring: 210 100% 40%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 357 98% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 210 100% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 1% 29%;
+    --sidebar-ring: 210 100% 40%;
   }
 }
 
@@ -100,7 +145,7 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-light;
+    @apply bg-background text-foreground font-roboto font-light;
   }
   
   h1, h2, h3, h4, h5, h6 {

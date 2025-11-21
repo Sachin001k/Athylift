@@ -1,4 +1,5 @@
 import { User, Heart, Building, CheckCircle } from 'lucide-react';
+import { Navbar } from '@/components/Navbar';
 
 const Features = () => {
   const athleteFeatures = [
@@ -26,12 +27,13 @@ const Features = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-base-200 py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen bg-base-200">
+      <Navbar onMenuClick={() => {}} />
+      <div className="container mx-auto max-w-6xl py-12 px-4">
         {/* Hero */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-4">Features for Everyone</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Features for Everyone</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-serif">
             Whether you're an athlete, fan, or brand, Athlyft has something for you
           </p>
         </div>
@@ -106,15 +108,15 @@ const Features = () => {
         </div>
 
         {/* CTA */}
-        <div className="card bg-gradient-to-r from-primary to-secondary text-white">
+        <div className="card bg-gradient-to-r from-primary to-secondary text-base-100">
           <div className="card-body text-center py-12">
             <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
             <p className="text-xl mb-6">Join Athlyft today and experience all these features</p>
             <div className="flex justify-center gap-4">
-              <a href="/register" className="btn btn-lg bg-white text-primary hover:bg-white/90 border-none">
+              <a href="/register" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
                 Sign Up Free
               </a>
-              <a href="/explore" className="btn btn-lg btn-outline text-white border-white hover:bg-white hover:text-primary">
+              <a href="/explore" className="btn btn-lg btn-outline text-base-100 border-base-100 hover:bg-base-100 hover:text-primary">
                 Explore Platform
               </a>
             </div>

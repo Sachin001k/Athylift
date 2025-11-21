@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Image as ImageIcon, Video, Link2, Smile, Hash, Users, Clock3, Globe2, Tag, AtSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const MAX_CHARS = 1300;
 
 const AddPost = () => {
   const { toast } = useToast();
-  const [title, setTitle] = useState('');
+  const [headline, setHeadline] = useState('');
   const [content, setContent] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [attachmentType, setAttachmentType] = useState<'image' | 'video' | null>(null);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [audience, setAudience] = useState<'connections' | 'public' | 'private'>('connections');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagInput, setHashtagInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,136 +25,235 @@ const AddPost = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
+        setAttachmentType('image');
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveMedia = () => {
     setImagePreview(null);
+    setAttachmentType(null);
   };
 
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleAddHashtag = () => {
+    if (hashtagInput.trim() && !hashtags.includes(hashtagInput.trim())) {
+      setHashtags([...hashtags, hashtagInput.trim()]);
+      setHashtagInput('');
+    }
+  };
+
+  const disablePost = !content.trim() && !headline.trim();
+
   const handleSave = async () => {
-    if (!title || !content) {
+    if (disablePost) {
       toast({
-        title: 'Missing fields',
-        description: 'Please fill in all required fields',
+        title: 'Add a thought first',
+        description: 'Write something or add media to share.',
         variant: 'destructive',
       });
       return;
     }
 
     setLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({
-      title: 'Post created!',
-      description: 'Your post has been shared with the community',
+      title: 'Shared to feed',
+      description: 'Your post is live for your audience.',
     });
 
     setLoading(false);
-    setTitle('');
+    setHeadline('');
     setContent('');
     setImagePreview(null);
-  };
-
-  const handleDiscard = () => {
-    setTitle('');
-    setContent('');
-    setImagePreview(null);
-    toast({
-      title: 'Discarded',
-      description: 'Your changes have been discarded',
-    });
+    setAttachmentType(null);
+    setLinkUrl('');
+    setTags([]);
+    setHashtags([]);
   };
 
   return (
     <Layout showStats={false}>
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-8">Create New Post</h1>
+        <h1 className="text-3xl font-bold mb-6">Start a post</h1>
 
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-base-100 shadow-xl border border-base-300">
           <div className="card-body space-y-6">
-            {/* Title Input */}
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="avatar placeholder">
+                  <div className="bg-primary text-base-100 rounded-full w-10">
+                    <span>YO</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold">You</p>
+                  <select
+                    value={audience}
+                    onChange={(e) => setAudience(e.target.value as typeof audience)}
+                    className="select select-xs select-bordered"
+                  >
+                    <option value="connections">Connections only</option>
+                    <option value="public">Public</option>
+                    <option value="private">Private draft</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button className={`btn btn-sm ${audience === 'public' ? 'btn-primary text-base-100' : 'btn-ghost'}`} onClick={() => setAudience('public')}>
+                  <Globe2 className="h-4 w-4 mr-1" />
+                  Public
+                </button>
+                <button className={`btn btn-sm ${audience === 'connections' ? 'btn-secondary text-base-100' : 'btn-ghost'}`} onClick={() => setAudience('connections')}>
+                  <Users className="h-4 w-4 mr-1" />
+                  Connections
+                </button>
+              </div>
+            </div>
+
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold">Title</span>
-              </label>
               <input
                 type="text"
-                placeholder="Give your post a catchy title"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                placeholder="Add a headline"
                 className="input input-bordered w-full"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
-            {/* Image Upload */}
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold">Image</span>
-              </label>
-              
-              {!imagePreview ? (
-                <label className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-base-200 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
-                  />
-                  <Upload className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                </label>
-              ) : (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full rounded-lg aspect-video object-cover"
-                  />
-                  <button
-                    onClick={handleRemoveImage}
-                    className="btn btn-circle btn-sm absolute top-2 right-2 bg-error text-white"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Content Textarea */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold">Content</span>
-              </label>
               <textarea
-                className="textarea textarea-bordered h-32"
-                placeholder="Share your story, achievement, or thoughts..."
+                className="textarea textarea-bordered h-40"
+                placeholder="What do you want to talk about?"
                 value={content}
+                maxLength={MAX_CHARS}
                 onChange={(e) => setContent(e.target.value)}
               />
+              <div className="text-right text-xs text-muted-foreground mt-1">{content.length}/{MAX_CHARS}</div>
             </div>
 
-            {/* Actions */}
+            {imagePreview && (
+              <div className="relative rounded-lg overflow-hidden border border-base-300">
+                <img src={imagePreview} alt="preview" className="w-full max-h-80 object-cover" />
+                <button
+                  onClick={handleRemoveMedia}
+                  className="btn btn-circle btn-sm absolute top-2 right-2 bg-error text-base-100"
+                  aria-label="Remove media"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text flex items-center gap-2"><Tag className="h-4 w-4" /> Tag people</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="input input-bordered flex-1"
+                    placeholder="@name"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                  />
+                  <button className="btn btn-outline" type="button" onClick={handleAddTag}>Add</button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((t) => (
+                    <span key={t} className="badge badge-primary badge-outline gap-1">
+                      <AtSign className="h-3 w-3" />{t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text flex items-center gap-2"><Hash className="h-4 w-4" /> Hashtags</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="input input-bordered flex-1"
+                    placeholder="#parenting"
+                    value={hashtagInput}
+                    onChange={(e) => setHashtagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddHashtag())}
+                  />
+                  <button className="btn btn-outline" type="button" onClick={handleAddHashtag}>Add</button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {hashtags.map((t) => (
+                    <span key={t} className="badge badge-secondary badge-outline">#{t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2"><Link2 className="h-4 w-4" /> Add a link</span>
+              </label>
+              <input
+                type="url"
+                className="input input-bordered w-full"
+                placeholder="https://"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3 items-center border border-base-300 rounded-lg p-3 bg-base-200/60">
+              <label className="btn btn-ghost btn-sm gap-2">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                Photo
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              <button className={`btn btn-ghost btn-sm gap-2 ${attachmentType === 'video' ? 'text-primary' : ''}`} onClick={() => setAttachmentType('video')}>
+                <Video className="h-4 w-4 text-secondary" />
+                Video
+              </button>
+              <button className="btn btn-ghost btn-sm gap-2">
+                <Smile className="h-4 w-4 text-accent" />
+                Feeling/Activity
+              </button>
+              <button className="btn btn-ghost btn-sm gap-2">
+                <Clock3 className="h-4 w-4 text-muted-foreground" />
+                Schedule
+              </button>
+            </div>
+
             <div className="card-actions justify-end gap-2">
               <button
-                onClick={handleDiscard}
                 className="btn btn-ghost"
+                onClick={() => {
+                  setHeadline('');
+                  setContent('');
+                  setImagePreview(null);
+                  setAttachmentType(null);
+                  setLinkUrl('');
+                  setTags([]);
+                  setHashtags([]);
+                }}
                 disabled={loading}
               >
                 Discard
               </button>
               <button
                 onClick={handleSave}
-                className="btn btn-primary"
-                disabled={loading || !title || !content}
+                className="btn btn-primary text-base-100"
+                disabled={loading || disablePost}
               >
                 {loading ? (
                   <>
@@ -153,7 +261,10 @@ const AddPost = () => {
                     Posting...
                   </>
                 ) : (
-                  'Save Post'
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Post
+                  </>
                 )}
               </button>
             </div>

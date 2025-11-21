@@ -89,7 +89,7 @@ const Profile = () => {
                   className="hidden"
                   onChange={handleCoverChange}
                 />
-                <div className="text-white text-center">
+                <div className="text-base-100 text-center">
                   <Camera className="h-12 w-12 mx-auto mb-2" />
                   <p>Change Cover</p>
                 </div>
@@ -108,7 +108,7 @@ const Profile = () => {
                     className="hidden"
                     onChange={handleProfileChange}
                   />
-                  <Camera className="h-8 w-8 text-white" />
+                  <Camera className="h-8 w-8 text-base-100" />
                 </label>
               </div>
             </div>
@@ -207,12 +207,57 @@ const Profile = () => {
                 />
                 <button
                   onClick={handleAddVideo}
-                  className="btn btn-primary"
+                  className="btn btn-primary text-base-100"
                 >
                   <Youtube className="h-4 w-4 mr-2" />
                   Add Video
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Preferences */}
+        <div className="card bg-base-100 shadow-xl mb-8">
+          <div className="card-body">
+            <h2 className="card-title">Profile Preferences</h2>
+            <div className="grid md:grid-cols-3 gap-4 mt-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Feed customization</span>
+                </label>
+                <select className="select select-bordered w-full">
+                  <option>Show all topics</option>
+                  <option>Parenting only</option>
+                  <option>Mental wellness first</option>
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Default theme</span>
+                </label>
+                <select className="select select-bordered w-full">
+                  <option>LinkedIn Blue</option>
+                  <option>Dark</option>
+                  <option>Sport (Red/Blue)</option>
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Content sensitivity</span>
+                </label>
+                <select className="select select-bordered w-full">
+                  <option>Balanced</option>
+                  <option>Restrictive</option>
+                  <option>Open</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button className="btn btn-primary text-base-100">
+                <Save className="h-4 w-4 mr-2" />
+                Save preferences
+              </button>
             </div>
           </div>
         </div>
