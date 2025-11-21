@@ -35,14 +35,14 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
         <div className="flex items-center gap-4">
           <button
             onClick={onMenuClick}
-            className="btn btn-ghost btn-sm lg:hidden"
+            className="btn btn-ghost btn-sm lg:hidden text-base-content"
             aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </button>
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
-              <span className="text-xl font-bold text-primary-foreground">A</span>
+              <span className="text-xl font-bold text-white">A</span>
             </div>
             <span className="text-2xl font-bold text-primary">Athlyft</span>
           </Link>
@@ -62,30 +62,30 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="btn btn-ghost btn-circle">
+              <button className="btn btn-ghost btn-circle text-base-content">
                 {getThemeIcon()}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme('light')}>
+            <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
+              <DropdownMenuItem onClick={() => setTheme('light')} className="text-base-content">
                 <Sun className="mr-2 h-4 w-4" />
                 Light
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')}>
+              <DropdownMenuItem onClick={() => setTheme('dark')} className="text-base-content">
                 <Moon className="mr-2 h-4 w-4" />
                 Dark
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('sport')}>
+              <DropdownMenuItem onClick={() => setTheme('sport')} className="text-base-content">
                 <Flame className="mr-2 h-4 w-4" />
                 Sport
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <button className="btn btn-ghost btn-circle relative">
+          <button className="btn btn-ghost btn-circle relative text-base-content">
             <Bell className="h-5 w-5" />
             {notificationCount > 0 && (
-              <span className="badge badge-primary badge-sm absolute top-1 right-1">
+              <span className="badge badge-primary badge-sm absolute top-1 right-1 text-white">
                 {notificationCount}
               </span>
             )}
@@ -100,15 +100,15 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
               <DropdownMenuItem asChild>
-                <Link to="/profile">Profile</Link>
+                <Link to="/profile" className="text-base-content">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/profile">Settings</Link>
+                <Link to="/profile" className="text-base-content">Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/login">Logout</Link>
+                <Link to="/login" className="text-base-content">Logout</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
