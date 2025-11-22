@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Camera, Save, Plus, Youtube } from 'lucide-react';
+import { Camera, Save, Youtube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -60,12 +60,15 @@ const Profile = () => {
         setCoverImage(record.cover_url || DEFAULT_COVER);
         setProfileImage(record.avatar_url || DEFAULT_AVATAR);
       }
-      const storageList = await supabase.storage.from(PROFILE_BUCKET).list(userData.user.id, { limit: 30 });
-      if (!storageList.error && storageList.data) {
-        const urls = storageList.data
-          .filter((file) => file.name.match(/\.(png|jpe?g|gif|webp)$/i))
-          .map((file) => supabase.storage.from(PROFILE_BUCKET).getPublicUrl(`${userData.user!.id}/${file.name}`).data.publicUrl);
-        setGallery(urls);
+      const { data: postImages } = await supabase
+        .from('posts')
+        .select('attachment_url, attachment_kind')
+        .eq('user_id', userData.user.id)
+        .eq('attachment_kind', 'image')
+        .not('attachment_url', 'is', null)
+        .limit(30);
+      if (postImages) {
+        setGallery(postImages.map((p) => p.attachment_url!).filter(Boolean));
       }
       setLoadingProfile(false);
     };
@@ -329,19 +332,13 @@ const Profile = () => {
         <div className="card bg-base-100 shadow-xl mb-8">
           <div className="card-body">
             <h2 className="card-title">Gallery</h2>
+            {gallery.length === 0 && <p className="text-sm text-muted-foreground">No image posts yet.</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {gallery.map((img, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden">
                   <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                 </div>
               ))}
-              <label className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-base-200 transition-colors">
-                <input type="file" accept="image/*" className="hidden" />
-                <div className="text-center">
-                  <Plus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Add Image</p>
-                </div>
-              </label>
             </div>
           </div>
         </div>

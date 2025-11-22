@@ -3,6 +3,8 @@ import { Layout } from '@/components/Layout';
 import { Heart, MessageCircle, Share2, MoreVertical, Play, Gift, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
+import { User } from '@supabase/supabase-js';
+import { useToast } from '@/hooks/use-toast';
 
 type FeedPost = {
   id: string;
@@ -11,57 +13,117 @@ type FeedPost = {
   attachment_kind: string | null;
   attachment_preview: string | null;
   created_at?: string;
+  likes_count?: number | null;
+  comments_count?: number | null;
+  share_count?: number | null;
+};
+
+type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string | null;
+  content: string;
+  created_at: string;
 };
 
 const Explore = () => {
+  const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [liked, setLiked] = useState<string[]>([]);
-  const [showReel, setShowReel] = useState(false);
-  const [activeReelIndex, setActiveReelIndex] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const lastScrollRef = useRef(0);
   const [commentModalPostId, setCommentModalPostId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
-  const [comments, setComments] = useState<{ [postId: string]: string[] }>({});
+  const [comments, setComments] = useState<{ [postId: string]: PostComment[] }>({});
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
 
-  const reels = videoPosts.map((p, idx) => ({
-    id: p.id,
-    title: p.content?.slice(0, 48) || 'Video reel',
-    video: p.attachment_url,
-    poster: p.attachment_preview || undefined,
-    duration: '',
-    idx,
-  }));
-
   useEffect(() => {
-    const loadPosts = async () => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('id, content, attachment_url, attachment_kind, attachment_preview, created_at')
-        .order('created_at', { ascending: false });
-      if (!error && data) setPosts(data as FeedPost[]);
+    const loadInitial = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user ?? null);
+      await loadPosts(userData.user?.id);
     };
-    loadPosts();
+    loadInitial();
   }, []);
 
-  const toggleLike = (postId: string) => {
-    setLiked(prev =>
-      prev.includes(postId)
-        ? prev.filter(id => id !== postId)
-        : [...prev, postId]
-    );
+  const loadPosts = async (userId?: string | null) => {
+    setLoadingPosts(true);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('id, content, attachment_url, attachment_kind, attachment_preview, created_at, likes_count, comments_count, share_count')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      const fetched = data as FeedPost[];
+      setPosts(fetched);
+      if (userId && fetched.length > 0) {
+        const ids = fetched.map((p) => p.id);
+        const { data: likedRows } = await supabase
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', userId)
+          .in('post_id', ids);
+        setLiked((likedRows || []).map((row) => row.post_id));
+      } else {
+        setLiked([]);
+      }
+    } else if (error) {
+      toast({ title: 'Could not load posts', description: error.message, variant: 'destructive' });
+    }
+    setLoadingPosts(false);
   };
 
-  const openReel = (index: number) => {
-    setActiveReelIndex(index);
-    setShowReel(true);
-  };
+  const toggleLike = async (postId: string) => {
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please log in to like posts.', variant: 'destructive' });
+      return;
+    }
+    const isLiked = liked.includes(postId);
+    const currentLikes = posts.find((p) => p.id === postId)?.likes_count ?? 0;
+    const updateCounts = (delta: number) =>
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, likes_count: (p.likes_count ?? 0) + delta } : p))
+      );
 
-  const closeReel = () => setShowReel(false);
+    if (isLiked) {
+      setLiked((prev) => prev.filter((id) => id !== postId));
+      updateCounts(-1);
+      const { error } = await supabase
+        .from('post_likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+      if (error) {
+        setLiked((prev) => [...prev, postId]);
+        updateCounts(1);
+        toast({ title: 'Could not remove like', description: error.message, variant: 'destructive' });
+      } else {
+        await supabase
+          .from('posts')
+          .update({ likes_count: Math.max(0, currentLikes - 1) })
+          .eq('id', postId);
+      }
+    } else {
+      setLiked((prev) => [...prev, postId]);
+      updateCounts(1);
+      const { error } = await supabase.from('post_likes').upsert({ post_id: postId, user_id: user.id });
+      if (error) {
+        setLiked((prev) => prev.filter((id) => id !== postId));
+        updateCounts(-1);
+        toast({ title: 'Could not like post', description: error.message, variant: 'destructive' });
+      } else {
+        await supabase
+          .from('posts')
+          .update({ likes_count: currentLikes + 1 })
+          .eq('id', postId);
+      }
+    }
+  };
 
   const openVideoModalByPost = (postId: string) => {
     const idx = videoPosts.findIndex((p) => p.id === postId);
@@ -90,73 +152,83 @@ const Explore = () => {
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
 
-  const openCommentModal = (postId: string) => {
+  const openCommentModal = async (postId: string) => {
     setCommentModalPostId(postId);
     setCommentDraft('');
+    setCommentsLoading(true);
+    const { data, error } = await supabase
+      .from('post_comments')
+      .select('id, post_id, user_id, content, created_at')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setComments((prev) => ({ ...prev, [postId]: data as PostComment[] }));
+    } else if (error) {
+      toast({ title: 'Could not load comments', description: error.message, variant: 'destructive' });
+    }
+    setCommentsLoading(false);
   };
 
-  const submitComment = () => {
+  const submitComment = async () => {
     if (!commentModalPostId || !commentDraft.trim()) return;
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please log in to comment.', variant: 'destructive' });
+      return;
+    }
+    const { data, error } = await supabase
+      .from('post_comments')
+      .insert({ post_id: commentModalPostId, content: commentDraft.trim(), user_id: user.id })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: 'Could not post comment', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const newComment = data as PostComment;
     setComments((prev) => ({
       ...prev,
-      [commentModalPostId]: [...(prev[commentModalPostId] || []), commentDraft.trim()],
+      [commentModalPostId]: [newComment, ...(prev[commentModalPostId] || [])],
     }));
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === commentModalPostId ? { ...p, comments_count: (p.comments_count ?? 0) + 1 } : p
+      )
+    );
+    await supabase
+      .from('posts')
+      .update({ comments_count: (posts.find((p) => p.id === commentModalPostId)?.comments_count ?? 0) + 1 })
+      .eq('id', commentModalPostId);
     setCommentDraft('');
   };
 
-  const nextReel = () => setActiveReelIndex((prev) => (prev + 1) % reels.length);
-  const prevReel = () => setActiveReelIndex((prev) => (prev - 1 + reels.length) % reels.length);
+  const sharePost = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    const nextCount = (post.share_count ?? 0) + 1;
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, share_count: nextCount } : p)));
+    const { error } = await supabase.from('posts').update({ share_count: nextCount }).eq('id', postId);
+    if (error) {
+      toast({ title: 'Share failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Post shared' });
+    }
+  };
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Explore Feed</h1>
 
-        {/* Reels rail */}
-        <div className="card bg-base-100 shadow-xl mb-8 border border-base-300">
-          <div className="card-body">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Short, under-2-minute reels</p>
-                <h2 className="text-2xl font-semibold">Watch Reels</h2>
-              </div>
-              <button className="btn btn-outline btn-primary" onClick={() => openReel(0)}>
-                Play now
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {reels.length === 0 && (
-                <p className="text-sm text-muted-foreground">No video posts yet.</p>
-              )}
-              {reels.map((reel, idx) => (
-                <button
-                  key={reel.id}
-                  onClick={() => openReel(idx)}
-                  className="relative group overflow-hidden rounded-xl border border-base-300"
-                >
-                  {reel.poster ? (
-                    <img src={reel.poster} alt={reel.title} className="w-full h-48 object-cover" />
-                  ) : (
-                    <div className="w-full h-48 bg-base-200 flex items-center justify-center text-muted-foreground">No preview</div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-10 w-10 text-base-900 p-2" />
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-base-900 p-2 text-sm drop-shadow">
-                    <span className="font-semibold">{reel.title}</span>
-                    <span className="rounded-full bg-black/60 px-2 py-0.5 text-xs">{reel.duration}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {posts.length === 0 && (
+          {loadingPosts && (
+            <div className="col-span-full flex justify-center py-6">
+              <span className="loading loading-spinner loading-lg text-primary" />
+            </div>
+          )}
+          {!loadingPosts && posts.length === 0 && (
             <p className="text-sm text-muted-foreground">No posts yet. Create one to get started.</p>
           )}
-          {posts.map((post) => (
+          {!loadingPosts && posts.map((post) => (
             <div key={post.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
               <div className="card-body p-4">
                 {/* Author Header */}
@@ -221,16 +293,17 @@ const Explore = () => {
                         liked.includes(post.id) ? 'fill-error' : ''
                       }`}
                     />
-                    <span>{liked.includes(post.id) ? 1 : 0}</span>
+                    <span>{post.likes_count ?? 0}</span>
                   </button>
 
                   <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
                     <MessageCircle className="h-5 w-5" />
-                    <span>{comments[post.id]?.length ?? 0}</span>
+                    <span>{post.comments_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2">
+                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => sharePost(post.id)}>
                     <Share2 className="h-5 w-5" />
+                    <span>{post.share_count ?? 0}</span>
                   </button>
 
                   <button className="btn btn-secondary btn-sm gap-2 text-base-900 p-2">
@@ -243,73 +316,6 @@ const Explore = () => {
           ))}
         </div>
       </div>
-
-      {showReel && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-5xl">
-            <button
-              onClick={closeReel}
-              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="grid grid-cols-1 lg:grid-cols-4">
-              <div className="lg:col-span-3 bg-black">
-                <video
-                  key={reels[activeReelIndex].id}
-                  src={reels[activeReelIndex].video}
-                  poster={reels[activeReelIndex].poster}
-                  controls
-                  autoPlay
-                  className="w-full h-full max-h-[70vh] object-contain bg-black"
-                />
-              </div>
-              <div className="p-4 space-y-3 bg-base-100">
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-primary">Reel</span>
-                  <span className="text-sm text-muted-foreground">Auto-loads next two</span>
-                </div>
-                <h3 className="text-xl font-semibold">{reels[activeReelIndex].title}</h3>
-                <div className="flex gap-2">
-                  <button className="btn btn-ghost btn-sm" onClick={prevReel}>
-                    <ChevronLeft className="h-4 w-4" /> Prev
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={nextReel}>
-                    Next <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Up next</p>
-                  <div className="space-y-2">
-                    {[1, 2].map((offset) => {
-                      const idx = (activeReelIndex + offset) % reels.length;
-                      const upcoming = reels[idx];
-                      return (
-                        <button
-                          key={upcoming.id}
-                          className="flex items-center gap-2 w-full text-left rounded-lg border border-base-300 p-2 hover:border-primary"
-                          onClick={() => openReel(idx)}
-                        >
-                          <img src={upcoming.poster} alt={upcoming.title} className="w-14 h-14 rounded object-cover" />
-                          <div>
-                            <p className="font-semibold">{upcoming.title}</p>
-                            <p className="text-xs text-muted-foreground">{upcoming.duration}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button className="btn btn-primary btn-sm text-base-900 p-2">Like</button>
-                  <button className="btn btn-secondary btn-sm text-base-900 p-2">Comment</button>
-                  <button className="btn btn-accent btn-sm text-base-900 p-2">Donate</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showVideoModal && videoPosts.length > 0 && (
         <div
@@ -384,15 +390,22 @@ const Explore = () => {
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4">
               <h3 className="text-xl font-semibold">Comments</h3>
               <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
-                {(comments[commentModalPostId] || []).length === 0 && (
+                {commentsLoading && (
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner text-primary" />
+                  </div>
+                )}
+                {!commentsLoading && (comments[commentModalPostId] || []).length === 0 && (
                   <p className="text-sm text-muted-foreground">Be the first to comment.</p>
                 )}
-                {(comments[commentModalPostId] || []).map((c, idx) => (
-                  <div key={idx} className="rounded-lg border border-base-300 p-2 text-sm">
-                    {c}
+                {(comments[commentModalPostId] || []).map((c) => (
+                  <div key={c.id} className="rounded-lg border border-base-300 p-2 text-sm">
+                    <p className="font-semibold">{c.user_id ? 'Member' : 'Anon'}</p>
+                    <p>{c.content}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</p>
                   </div>
                 ))}
               </div>
