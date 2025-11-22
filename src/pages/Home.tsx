@@ -7,7 +7,7 @@ const Home = () => {
     <div className="min-h-screen bg-base-200 text-base-content">
       <Navbar onMenuClick={() => {}} />
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-secondary py-20 px-4 text-base-100">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-secondary py-20 px-4 text-base-900 p-2">
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,rgba(0,119,181,0.6),transparent),radial-gradient(circle_at_80%_0%,rgba(0,160,220,0.5),transparent)]" />
         <div className="container mx-auto relative text-center">
           <h1 className="text-5xl md:text-7xl font-brand tracking-wide mb-6">
@@ -21,10 +21,10 @@ const Home = () => {
               Join Athlyt
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
-            <Link to="/explore" className="btn btn-lg bg-secondary text-base-100 border-none hover:bg-secondary/90 shadow-lg shadow-secondary/30">
+            <Link to="/explore" className="btn btn-lg bg-secondary text-base-900 p-2 border-none hover:bg-secondary/90 shadow-lg shadow-secondary/30">
               Explore Feed
             </Link>
-            <Link to="/about" className="btn btn-lg btn-outline border-base-100 text-base-100 hover:bg-base-100 hover:text-primary">
+            <Link to="/about" className="btn btn-lg btn-outline border-base-100 text-base-900 p-2 hover:bg-base-100 hover:text-primary">
               Learn More
             </Link>
           </div>
@@ -110,10 +110,10 @@ const Home = () => {
               <h3 className="text-3xl font-semibold text-primary">Explore Feed</h3>
             </div>
             <div className="flex gap-3">
-              <Link to="/explore" className="btn bg-primary text-base-100 border-none hover:bg-primary/90 shadow-lg shadow-primary/30">
+              <Link to="/explore" className="btn bg-primary text-base-900 p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30">
                 Go to Feed
               </Link>
-              <a href="#feed-preview" className="btn btn-secondary text-base-100 border-none">
+              <a href="#feed-preview" className="btn btn-secondary text-base-900 p-2 border-none">
                 See previews
               </a>
             </div>
@@ -207,7 +207,7 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-base-100">
+      <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-base-900 p-2">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-brand tracking-wide mb-4">Ready to feel supported?</h2>
           <p className="text-xl font-serif max-w-3xl mx-auto mb-8">

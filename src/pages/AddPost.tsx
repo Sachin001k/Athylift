@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Upload, Loader2, Image as ImageIcon, Tag, Share2, Users, Globe2, X, Hash, Paperclip } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, Tag, Share2, Globe2, Paperclip } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const MAX_CHARS = 300;
+const ATTACHMENT_BUCKET = 'post-attachments';
+
+type Attachment = { kind: 'image' | 'video' | 'file'; url?: string; name?: string; file?: File };
 
 const AddPost = () => {
   const { toast } = useToast();
   const [content, setContent] = useState('');
-  const [attachment, setAttachment] = useState<{ kind: 'image' | 'video' | 'file'; url?: string; name?: string } | null>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [audience, setAudience] = useState<'anyone' | 'connections'>('anyone');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -30,10 +34,10 @@ const AddPost = () => {
 
     if (kind === 'image' || kind === 'video') {
       const reader = new FileReader();
-      reader.onloadend = () => setAttachment({ kind, url: reader.result as string, name: file.name });
+      reader.onloadend = () => setAttachment({ kind, url: reader.result as string, name: file.name, file });
       reader.readAsDataURL(file);
     } else {
-      setAttachment({ kind, name: file.name });
+      setAttachment({ kind, name: file.name, file });
     }
   };
 
@@ -53,8 +57,74 @@ const AddPost = () => {
       });
       return;
     }
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      toast({
+        title: 'Login required',
+        description: 'Please log in to create a post.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
+
+    let attachmentUrl: string | null = null;
+    let attachmentPath: string | null = null;
+
+    if (attachment?.file) {
+      attachmentPath = `${userData.user.id}/${Date.now()}-${attachment.file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from(ATTACHMENT_BUCKET)
+        .upload(attachmentPath, attachment.file, { upsert: true });
+
+      if (uploadError) {
+        toast({
+          title: 'Upload failed',
+          description: uploadError.message,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(attachmentPath);
+      attachmentUrl = data.publicUrl;
+    } else if (attachment) {
+      // Attachment state exists but no file reference; bail instead of creating a dangling record.
+      toast({
+        title: 'Upload failed',
+        description: 'Attachment file is missing. Please re-upload and try again.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from('posts').insert({
+      user_id: userData.user.id,
+      content: content.trim(),
+      audience,
+      tags,
+      hashtags,
+      attachment_kind: attachment?.kind ?? null,
+      attachment_name: attachment?.name ?? null,
+      attachment_preview: attachment?.url ?? null,
+      attachment_url: attachmentUrl,
+      attachment_path: attachmentPath,
+    });
+
+    if (error) {
+      toast({
+        title: 'Could not post',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     toast({ title: 'Posted', description: 'Your update is live.' });
     setLoading(false);
     setContent('');
@@ -83,7 +153,7 @@ const AddPost = () => {
     <Layout showStats={false}>
       <div className="container mx-auto px-4 py-10 max-w-4xl">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-base-100 font-semibold">in</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-base-900 p-2 font-semibold">in</div>
           <div className="leading-tight">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">athlete network</p>
             <p className="text-lg font-light text-base-content">Create a post</p>
@@ -92,7 +162,7 @@ const AddPost = () => {
 
         <div className="card bg-base-100 shadow-lg border border-base-300 overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-start gap-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-base-100 text-sm font-semibold">YO</div>
+            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-base-900 p-2 text-sm font-semibold">YO</div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-base-content/90">You</span>
@@ -162,7 +232,7 @@ const AddPost = () => {
                   <button
                     type="button"
                     onClick={removeAttachment}
-                    className="absolute top-2 right-2 rounded-full bg-base-content/80 text-base-100 text-[10px] px-2 py-0.5"
+                    className="absolute top-2 right-2 rounded-full bg-base-content/80 text-base-900 p-2 text-[10px] px-2 py-0.5"
                   >
                     remove
                   </button>
@@ -235,7 +305,7 @@ const AddPost = () => {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="inline-flex items-center justify-center rounded-full bg-primary text-base-100 text-sm font-light px-4 py-1.5 hover:bg-primary/90 transition disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-full bg-primary text-base-900 p-2 text-sm font-light px-4 py-1.5 hover:bg-primary/90 transition disabled:opacity-60"
                 disabled={loading}
               >
                 {loading ? (

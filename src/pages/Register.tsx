@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
+import { supabase } from '@/lib/supabaseClient';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -10,11 +11,14 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState('Parent');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({
         title: 'Passwords do not match',
@@ -25,15 +29,48 @@ const Register = () => {
     }
 
     setLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { first_name: firstName, last_name: lastName, role },
+      },
+    });
+
+    if (error || !data.user) {
+      toast({
+        title: 'Signup failed',
+        description: error?.message || 'Unable to create account',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    const fullName = `${firstName} ${lastName}`.trim();
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user.id,
+      full_name: fullName || data.user.email,
+      role,
+      email: data.user.email,
+    });
+
+    if (profileError) {
+      toast({
+        title: 'Profile setup failed',
+        description: profileError.message,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     toast({
       title: 'Account created!',
       description: 'Welcome to Athlyft community',
     });
-    
+
     setLoading(false);
     navigate('/explore');
   };
@@ -42,7 +79,7 @@ const Register = () => {
     <div
       className="min-h-screen bg-base-200"
       style={{
-        backgroundImage: "linear-gradient(180deg, rgba(0,119,181,0.08), rgba(0,160,220,0.12)), url('/login-runner.png')",
+        backgroundImage: "linear-gradient(180deg, rgba(0,119,181,0.08), rgba(0,160,220,0.12)), url('/bg.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
@@ -58,7 +95,7 @@ const Register = () => {
               backgroundPosition: 'center',
             }}
           >
-            <div className="h-full w-full p-12 text-base-100 flex flex-col justify-center">
+            <div className="h-full w-full p-12 text-base-900 p-2 flex flex-col justify-center">
               <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyt</h2>
               <p className="text-lg font-serif mb-6">
                 Build your profile, share your journey, and connect with a trusted parenting community.
@@ -89,6 +126,8 @@ const Register = () => {
                     type="text"
                     placeholder="Alex"
                     className="input input-bordered w-full"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     required
                   />
                 </div>
@@ -100,6 +139,8 @@ const Register = () => {
                     type="text"
                     placeholder="Jordan"
                     className="input input-bordered w-full"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     required
                   />
                 </div>
@@ -123,11 +164,15 @@ const Register = () => {
                 <label className="label">
                   <span className="label-text">Role</span>
                 </label>
-                <select className="select select-bordered w-full">
-                  <option>Parent</option>
-                  <option>Caregiver</option>
-                  <option>Therapist / Expert</option>
-                  <option>Supporter</option>
+                <select
+                  className="select select-bordered w-full"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  <option value="Parent">Parent</option>
+                  <option value="Caregiver">Caregiver</option>
+                  <option value="Therapist / Expert">Therapist / Expert</option>
+                  <option value="Supporter">Supporter</option>
                 </select>
               </div>
 
@@ -168,7 +213,7 @@ const Register = () => {
 
               <button
                 type="submit"
-                className="btn w-full bg-primary text-base-100 border-none hover:bg-primary/90 shadow-lg shadow-primary/30"
+                className="btn w-full bg-primary text-base-900 p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30"
                 disabled={loading}
               >
                 {loading ? (

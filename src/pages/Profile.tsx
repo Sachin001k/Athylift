@@ -1,49 +1,164 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Camera, Save, Plus, Youtube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
+import { User } from '@supabase/supabase-js';
+
+const PROFILE_BUCKET = 'profile-media';
+const DEFAULT_COVER = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200';
+const DEFAULT_AVATAR = 'https://api.dicebear.com/7.x/avataaars/svg?seed=athlete';
+
+type ProfileRecord = {
+  full_name: string | null;
+  bio: string | null;
+  phone: string | null;
+  youtube_url: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  email?: string | null;
+  role?: string | null;
+};
 
 const Profile = () => {
   const { toast } = useToast();
-  const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200');
-  const [profileImage, setProfileImage] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=athlete');
-  const [name, setName] = useState('John Athlete');
-  const [bio, setBio] = useState('Professional athlete | Marathon runner | Fitness enthusiast');
-  const [phone, setPhone] = useState('+1 (555) 123-4567');
+  const [user, setUser] = useState<User | null>(null);
+  const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
+  const [phone, setPhone] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [youtubeInput, setYoutubeInput] = useState('');
+  const [coverImage, setCoverImage] = useState(DEFAULT_COVER);
+  const [profileImage, setProfileImage] = useState(DEFAULT_AVATAR);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [saving, setSaving] = useState(false);
   
-  const [gallery] = useState([
-    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400',
-    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=400',
-    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
-  ]);
+  const [gallery, setGallery] = useState<string[]>([]);
 
-  const [videos] = useState([
-    'dQw4w9WgXcQ',
-  ]);
+  useEffect(() => {
+    const loadProfile = async () => {
+      setLoadingProfile(true);
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        setLoadingProfile(false);
+        return;
+      }
+      setUser(userData.user);
 
-  const handleSave = (field: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userData.user.id)
+        .single();
+
+      if (!error && data) {
+        const record = data as ProfileRecord;
+        setName(record.full_name || '');
+        setBio(record.bio || '');
+        setPhone(record.phone || '');
+        setYoutubeUrl(record.youtube_url || '');
+        setCoverImage(record.cover_url || DEFAULT_COVER);
+        setProfileImage(record.avatar_url || DEFAULT_AVATAR);
+      }
+      const storageList = await supabase.storage.from(PROFILE_BUCKET).list(userData.user.id, { limit: 30 });
+      if (!storageList.error && storageList.data) {
+        const urls = storageList.data
+          .filter((file) => file.name.match(/\.(png|jpe?g|gif|webp)$/i))
+          .map((file) => supabase.storage.from(PROFILE_BUCKET).getPublicUrl(`${userData.user!.id}/${file.name}`).data.publicUrl);
+        setGallery(urls);
+      }
+      setLoadingProfile(false);
+    };
+
+    loadProfile();
+  }, []);
+
+  const requireUser = () => {
+    if (!user) {
+      toast({
+        title: 'Login required',
+        description: 'Please log in to edit your profile.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const persistProfile = async (updates: Partial<ProfileRecord>) => {
+    if (!requireUser()) return;
+    setSaving(true);
+    const { error } = await supabase.from('profiles').upsert({
+      id: user!.id,
+      full_name: name,
+      bio,
+      phone,
+      youtube_url: youtubeUrl,
+      avatar_url: profileImage,
+      cover_url: coverImage,
+      email: user!.email,
+      ...updates,
+    });
+
+    if (error) {
+      toast({
+        title: 'Save failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setSaving(false);
+      return;
+    }
+
     toast({
       title: 'Saved!',
-      description: `Your ${field} has been updated`,
+      description: 'Your profile has been updated',
     });
+    setSaving(false);
+  };
+
+  const uploadAndSave = async (file: File, keyPrefix: 'cover' | 'avatar') => {
+    if (!requireUser()) return;
+    setSaving(true);
+    const path = `${user!.id}/${keyPrefix}-${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from(PROFILE_BUCKET)
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      toast({
+        title: 'Upload failed',
+        description: uploadError.message,
+        variant: 'destructive',
+      });
+      setSaving(false);
+      return;
+    }
+
+    const { data } = supabase.storage.from(PROFILE_BUCKET).getPublicUrl(path);
+    const publicUrl = data.publicUrl;
+
+    if (keyPrefix === 'cover') {
+      setCoverImage(publicUrl);
+      await persistProfile({ cover_url: publicUrl });
+    } else {
+      setProfileImage(publicUrl);
+      await persistProfile({ avatar_url: publicUrl });
+    }
+    setSaving(false);
   };
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setCoverImage(reader.result as string);
-      reader.readAsDataURL(file);
+      uploadAndSave(file, 'cover');
     }
   };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result as string);
-      reader.readAsDataURL(file);
+      uploadAndSave(file, 'avatar');
     }
   };
 
@@ -54,13 +169,15 @@ const Profile = () => {
   };
 
   const handleAddVideo = () => {
-    const videoId = extractYouTubeId(youtubeUrl);
+    const videoId = extractYouTubeId(youtubeInput);
     if (videoId) {
+      setYoutubeUrl(youtubeInput);
+      persistProfile({ youtube_url: youtubeInput });
       toast({
         title: 'Video added!',
-        description: 'YouTube video has been added to your profile',
+        description: 'YouTube link saved to your profile',
       });
-      setYoutubeUrl('');
+      setYoutubeInput('');
     } else {
       toast({
         title: 'Invalid URL',
@@ -69,6 +186,31 @@ const Profile = () => {
       });
     }
   };
+
+  if (loadingProfile) {
+    return (
+      <Layout showStats={false}>
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="card bg-base-100 shadow-xl p-6">
+            <p>Loading profile...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Layout showStats={false}>
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="card bg-base-100 shadow-xl p-6">
+            <p className="text-lg font-semibold mb-2">Please log in to view your profile.</p>
+            <p className="text-sm text-muted-foreground">Navigate to Login and sign in with your Supabase credentials.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout showStats={false}>
@@ -89,7 +231,7 @@ const Profile = () => {
                   className="hidden"
                   onChange={handleCoverChange}
                 />
-                <div className="text-base-100 text-center">
+                <div className="text-base-900 p-2 text-center">
                   <Camera className="h-12 w-12 mx-auto mb-2" />
                   <p>Change Cover</p>
                 </div>
@@ -108,7 +250,7 @@ const Profile = () => {
                     className="hidden"
                     onChange={handleProfileChange}
                   />
-                  <Camera className="h-8 w-8 text-base-100" />
+                  <Camera className="h-8 w-8 text-base-900 p-2" />
                 </label>
               </div>
             </div>
@@ -128,8 +270,9 @@ const Profile = () => {
                   className="input input-bordered flex-1"
                 />
                 <button
-                  onClick={() => handleSave('name')}
+                  onClick={() => persistProfile({ full_name: name })}
                   className="btn btn-primary"
+                  disabled={saving}
                 >
                   <Save className="h-4 w-4" />
                 </button>
@@ -149,8 +292,31 @@ const Profile = () => {
                   rows={3}
                 />
                 <button
-                  onClick={() => handleSave('bio')}
+                  onClick={() => persistProfile({ bio })}
                   className="btn btn-primary"
+                  disabled={saving}
+                >
+                  <Save className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Phone (quick edit) */}
+            <div className="form-control mt-4">
+              <label className="label">
+                <span className="label-text font-semibold">Phone</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input input-bordered flex-1"
+                />
+                <button
+                  onClick={() => persistProfile({ phone })}
+                  className="btn btn-primary"
+                  disabled={saving}
                 >
                   <Save className="h-4 w-4" />
                 </button>
@@ -185,29 +351,32 @@ const Profile = () => {
           <div className="card-body">
             <h2 className="card-title">Videos</h2>
             <div className="space-y-4">
-              {videos.map((videoId, idx) => (
-                <div key={idx} className="aspect-video rounded-lg overflow-hidden">
+              {youtubeUrl ? (
+                <div className="aspect-video rounded-lg overflow-hidden">
                   <iframe
                     width="100%"
                     height="100%"
-                    src={`https://www.youtube.com/embed/${videoId}`}
+                    src={`https://www.youtube.com/embed/${extractYouTubeId(youtubeUrl) || ''}`}
                     title="YouTube video"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
-              ))}
+              ) : (
+                <p className="text-sm text-muted-foreground">Add a YouTube link to showcase a video.</p>
+              )}
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Enter YouTube URL"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  value={youtubeInput}
+                  onChange={(e) => setYoutubeInput(e.target.value)}
                   className="input input-bordered flex-1"
                 />
                 <button
                   onClick={handleAddVideo}
-                  className="btn btn-primary text-base-100"
+                  className="btn btn-primary text-base-900 p-2"
+                  disabled={saving}
                 >
                   <Youtube className="h-4 w-4 mr-2" />
                   Add Video
@@ -217,56 +386,11 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Preferences */}
-        <div className="card bg-base-100 shadow-xl mb-8">
-          <div className="card-body">
-            <h2 className="card-title">Profile Preferences</h2>
-            <div className="grid md:grid-cols-3 gap-4 mt-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold">Feed customization</span>
-                </label>
-                <select className="select select-bordered w-full">
-                  <option>Show all topics</option>
-                  <option>Parenting only</option>
-                  <option>Mental wellness first</option>
-                </select>
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold">Default theme</span>
-                </label>
-                <select className="select select-bordered w-full">
-                  <option>LinkedIn Blue</option>
-                  <option>Dark</option>
-                  <option>Sport (Red/Blue)</option>
-                </select>
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold">Content sensitivity</span>
-                </label>
-                <select className="select select-bordered w-full">
-                  <option>Balanced</option>
-                  <option>Restrictive</option>
-                  <option>Open</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button className="btn btn-primary text-base-100">
-                <Save className="h-4 w-4 mr-2" />
-                Save preferences
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Contact */}
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-base-100 shadow-xl mt-6">
           <div className="card-body">
             <h2 className="card-title">Contact Information</h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="form-control">
                 <label className="label">
                   <span className="label-text font-semibold">Name</span>
@@ -274,7 +398,7 @@ const Profile = () => {
                 <input
                   type="text"
                   value={name}
-                  className="input input-bordered"
+                  className="input input-bordered pl-2"
                   disabled
                 />
               </div>
@@ -285,8 +409,8 @@ const Profile = () => {
                 </label>
                 <input
                   type="email"
-                  value="john.athlete@example.com"
-                  className="input input-bordered"
+                  value={user.email || ''}
+                  className="input input-bordered pl-2"
                   disabled
                 />
               </div>
@@ -300,11 +424,12 @@ const Profile = () => {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="input input-bordered flex-1"
+                    className="input input-bordered flex-1 pl-2"
                   />
                   <button
-                    onClick={() => handleSave('phone')}
+                    onClick={() => persistProfile({ phone })}
                     className="btn btn-primary"
+                    disabled={saving}
                   >
                     <Save className="h-4 w-4" />
                   </button>

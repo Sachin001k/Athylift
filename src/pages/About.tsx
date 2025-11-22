@@ -7,7 +7,7 @@ const About = () => {
     <div className="min-h-screen bg-base-200 text-base-content">
       <Navbar onMenuClick={() => {}} />
 
-      <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-base-100">
+      <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-base-900 p-2">
         <div className="container mx-auto text-center">
           <h1 className="text-5xl font-brand tracking-wide mb-6">About Athlyt</h1>
           <p className="text-xl font-serif max-w-3xl mx-auto mb-8">
@@ -88,7 +88,7 @@ const About = () => {
           <p className="font-serif text-lg max-w-3xl mx-auto mb-6">
             Whether you're here to ask, support, or simply listen—Athlyt welcomes you. Join a movement where shared parenting experiences lead to healing, strength, and better mental well-being.
           </p>
-          <Link to="/register" className="btn btn-lg bg-primary text-base-100 border-none hover:bg-primary/80">
+          <Link to="/register" className="btn btn-lg bg-primary text-base-900 p-2 border-none hover:bg-primary/80">
             Become a Member
             <ArrowRight className="ml-2 h-5 w-5" />
           </Link>

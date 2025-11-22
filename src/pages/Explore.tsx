@@ -1,118 +1,54 @@
-import { useRef, useState, WheelEvent } from 'react';
+import { useEffect, useRef, useState, WheelEvent } from 'react';
 import { Layout } from '@/components/Layout';
 import { Heart, MessageCircle, Share2, MoreVertical, Play, Gift, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabaseClient';
+
+type FeedPost = {
+  id: string;
+  content: string | null;
+  attachment_url: string | null;
+  attachment_kind: string | null;
+  attachment_preview: string | null;
+  created_at?: string;
+};
 
 const Explore = () => {
-  const [posts] = useState([
-    {
-      id: 1,
-      author: 'Sarah Johnson',
-      email: 'sarah.j@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
-      image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
-      title: 'Morning Run Achievement!',
-      content: 'Just completed my best 10K time! The early morning training sessions are really paying off. Feeling stronger every day!',
-      likes: 142,
-      comments: 23,
-    },
-    {
-      id: 2,
-      author: 'Mike Chen',
-      email: 'mike.chen@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike',
-      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      poster: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
-      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
-      title: 'Gym Progress Update',
-      content: 'Hit a new PR on deadlifts today! 405lbs! Big thanks to my training partner for the motivation.',
-      likes: 89,
-      comments: 15,
-    },
-    {
-      id: 3,
-      author: 'Emma Williams',
-      email: 'emma.w@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma',
-      image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800',
-      title: 'Race Day Ready',
-      content: 'Marathon prep is complete. Ready to crush this weekend\'s race! Thanks for all the support!',
-      likes: 234,
-      comments: 41,
-    },
-    {
-      id: 4,
-      author: 'James Rodriguez',
-      email: 'james.r@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=james',
-      image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800',
-      title: 'Recovery Day Vibes',
-      content: 'Sometimes rest is just as important as training. Yoga and stretching session today.',
-      likes: 67,
-      comments: 8,
-    },
-    {
-      id: 5,
-      author: 'Lisa Park',
-      email: 'lisa.p@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lisa',
-      image: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800',
-      title: 'Swimming Competition',
-      content: 'First place in the 200m freestyle! All those early morning pool sessions were worth it!',
-      likes: 198,
-      comments: 32,
-    },
-    {
-      id: 6,
-      author: 'David Kim',
-      email: 'david.k@athlete.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=david',
-      image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
-      title: 'Trail Running Adventure',
-      content: 'Explored a new mountain trail today. The views were absolutely incredible!',
-      likes: 156,
-      comments: 19,
-    },
-  ]);
-
-  const [liked, setLiked] = useState<number[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [liked, setLiked] = useState<string[]>([]);
   const [showReel, setShowReel] = useState(false);
   const [activeReelIndex, setActiveReelIndex] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const lastScrollRef = useRef(0);
-  const [commentModalPostId, setCommentModalPostId] = useState<number | null>(null);
+  const [commentModalPostId, setCommentModalPostId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
-  const [comments, setComments] = useState<{ [postId: number]: string[] }>({});
+  const [comments, setComments] = useState<{ [postId: string]: string[] }>({});
 
-  const videoPosts = posts.filter((post) => post.video);
+  const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
 
-  const reels = [
-    {
-      id: 'r1',
-      title: 'Track focus',
-      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      poster: 'https://images.unsplash.com/photo-1511688878353-3a2f5be94cd7?w=800',
-      duration: '0:30',
-    },
-    {
-      id: 'r2',
-      title: 'Strength burst',
-      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/paint.mp4',
-      poster: 'https://images.unsplash.com/photo-1483721310020-03333e577078?w=800',
-      duration: '0:41',
-    },
-    {
-      id: 'r3',
-      title: 'Focus drill',
-      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm',
-      poster: 'https://images.unsplash.com/photo-1505678261036-a3fcc5e884ee?w=800',
-      duration: '0:25',
-    },
-  ];
+  const reels = videoPosts.map((p, idx) => ({
+    id: p.id,
+    title: p.content?.slice(0, 48) || 'Video reel',
+    video: p.attachment_url,
+    poster: p.attachment_preview || undefined,
+    duration: '',
+    idx,
+  }));
 
-  const toggleLike = (postId: number) => {
+  useEffect(() => {
+    const loadPosts = async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, content, attachment_url, attachment_kind, attachment_preview, created_at')
+        .order('created_at', { ascending: false });
+      if (!error && data) setPosts(data as FeedPost[]);
+    };
+    loadPosts();
+  }, []);
+
+  const toggleLike = (postId: string) => {
     setLiked(prev =>
       prev.includes(postId)
         ? prev.filter(id => id !== postId)
@@ -127,7 +63,7 @@ const Explore = () => {
 
   const closeReel = () => setShowReel(false);
 
-  const openVideoModalByPost = (postId: number) => {
+  const openVideoModalByPost = (postId: string) => {
     const idx = videoPosts.findIndex((p) => p.id === postId);
     if (idx >= 0) {
       setActiveVideoIndex(idx);
@@ -154,7 +90,7 @@ const Explore = () => {
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
 
-  const openCommentModal = (postId: number) => {
+  const openCommentModal = (postId: string) => {
     setCommentModalPostId(postId);
     setCommentDraft('');
   };
@@ -189,17 +125,24 @@ const Explore = () => {
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {reels.length === 0 && (
+                <p className="text-sm text-muted-foreground">No video posts yet.</p>
+              )}
               {reels.map((reel, idx) => (
                 <button
                   key={reel.id}
                   onClick={() => openReel(idx)}
                   className="relative group overflow-hidden rounded-xl border border-base-300"
                 >
-                  <img src={reel.poster} alt={reel.title} className="w-full h-48 object-cover" />
+                  {reel.poster ? (
+                    <img src={reel.poster} alt={reel.title} className="w-full h-48 object-cover" />
+                  ) : (
+                    <div className="w-full h-48 bg-base-200 flex items-center justify-center text-muted-foreground">No preview</div>
+                  )}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-10 w-10 text-base-100" />
+                    <Play className="h-10 w-10 text-base-900 p-2" />
                   </div>
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-base-100 text-sm drop-shadow">
+                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-base-900 p-2 text-sm drop-shadow">
                     <span className="font-semibold">{reel.title}</span>
                     <span className="rounded-full bg-black/60 px-2 py-0.5 text-xs">{reel.duration}</span>
                   </div>
@@ -210,6 +153,9 @@ const Explore = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {posts.length === 0 && (
+            <p className="text-sm text-muted-foreground">No posts yet. Create one to get started.</p>
+          )}
           {posts.map((post) => (
             <div key={post.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
               <div className="card-body p-4">
@@ -217,12 +163,12 @@ const Explore = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={post.avatar} />
-                      <AvatarFallback>{post.author[0]}</AvatarFallback>
+                      <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=member" />
+                      <AvatarFallback>US</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold">{post.author}</p>
-                      <p className="text-sm text-muted-foreground">{post.email}</p>
+                      <p className="font-semibold">Athlyft Member</p>
+                      <p className="text-sm text-muted-foreground">Community</p>
                     </div>
                   </div>
                   <button className="btn btn-ghost btn-sm btn-circle">
@@ -231,36 +177,35 @@ const Explore = () => {
                 </div>
 
                 {/* Post Media */}
-                <figure className="rounded-lg overflow-hidden relative">
-                  {post.video ? (
-                    <button onClick={() => openVideoModalByPost(post.id)} className="w-full">
-                      <video
-                        src={post.video}
-                        poster={post.poster}
-                        className="w-full aspect-video object-cover"
-                        muted
-                        loop
-                        autoPlay
-                      />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <Play className="h-12 w-12 text-base-100" />
-                      </div>
-                    </button>
-                  ) : (
-                    <button onClick={() => post.image && openImageModal(post.image)} className="w-full">
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        className="w-full aspect-video object-cover"
-                      />
-                    </button>
-                  )}
-                </figure>
+                {(post.attachment_kind === 'image' && post.attachment_url) && (
+                  <button onClick={() => openImageModal(post.attachment_url!)} className="w-full">
+                    <img
+                      src={post.attachment_url}
+                      alt="post"
+                      className="w-full aspect-video object-cover rounded-lg border border-base-300"
+                    />
+                  </button>
+                )}
+
+                {(post.attachment_kind === 'video' && post.attachment_url) && (
+                  <button onClick={() => openVideoModalByPost(post.id)} className="w-full relative">
+                    <video
+                      src={post.attachment_url}
+                      poster={post.attachment_preview || undefined}
+                      className="w-full aspect-video object-cover rounded-lg border border-base-300"
+                      muted
+                      loop
+                      autoPlay
+                    />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-lg">
+                      <Play className="h-12 w-12 text-base-900 p-2" />
+                    </div>
+                  </button>
+                )}
 
                 {/* Post Content */}
                 <div className="space-y-2 mt-3">
-                  <h3 className="font-bold text-lg">{post.title}</h3>
-                  <p className="text-sm line-clamp-2">{post.content}</p>
+                  <p className="text-sm whitespace-pre-line">{post.content}</p>
                 </div>
 
                 {/* Actions */}
@@ -276,19 +221,19 @@ const Explore = () => {
                         liked.includes(post.id) ? 'fill-error' : ''
                       }`}
                     />
-                    <span>{post.likes + (liked.includes(post.id) ? 1 : 0)}</span>
+                    <span>{liked.includes(post.id) ? 1 : 0}</span>
                   </button>
 
                   <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
                     <MessageCircle className="h-5 w-5" />
-                    <span>{comments[post.id]?.length ?? post.comments}</span>
+                    <span>{comments[post.id]?.length ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
+                  <button className="btn btn-ghost btn-sm gap-2">
                     <Share2 className="h-5 w-5" />
                   </button>
 
-                  <button className="btn btn-secondary btn-sm gap-2 text-base-100">
+                  <button className="btn btn-secondary btn-sm gap-2 text-base-900 p-2">
                     <Gift className="h-5 w-5" />
                     Donate
                   </button>
@@ -356,9 +301,9 @@ const Explore = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button className="btn btn-primary btn-sm text-base-100">Like</button>
-                  <button className="btn btn-secondary btn-sm text-base-100">Comment</button>
-                  <button className="btn btn-accent btn-sm text-base-100">Donate</button>
+                  <button className="btn btn-primary btn-sm text-base-900 p-2">Like</button>
+                  <button className="btn btn-secondary btn-sm text-base-900 p-2">Comment</button>
+                  <button className="btn btn-accent btn-sm text-base-900 p-2">Donate</button>
                 </div>
               </div>
             </div>
@@ -382,8 +327,8 @@ const Explore = () => {
               <div className="lg:col-span-3 bg-black">
                 <video
                   key={videoPosts[activeVideoIndex].id}
-                  src={videoPosts[activeVideoIndex].video}
-                  poster={videoPosts[activeVideoIndex].poster}
+                  src={videoPosts[activeVideoIndex].attachment_url || undefined}
+                  poster={videoPosts[activeVideoIndex].attachment_preview || undefined}
                   controls
                   autoPlay
                   loop
@@ -395,7 +340,7 @@ const Explore = () => {
                   <span className="badge badge-primary">Video</span>
                   <span className="text-sm text-muted-foreground">Scroll to browse</span>
                 </div>
-                <h3 className="text-xl font-semibold">{videoPosts[activeVideoIndex].title}</h3>
+                <h3 className="text-xl font-semibold">{videoPosts[activeVideoIndex].content?.slice(0, 60) || 'Video post'}</h3>
                 <p className="text-sm text-muted-foreground">{videoPosts[activeVideoIndex].content}</p>
                 <div className="flex gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={prevVideo}>
@@ -406,9 +351,9 @@ const Explore = () => {
                   </button>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button className="btn btn-primary btn-sm text-base-100">Like</button>
-                  <button className="btn btn-secondary btn-sm text-base-100">Comment</button>
-                  <button className="btn btn-accent btn-sm text-base-100">Donate</button>
+                  <button className="btn btn-primary btn-sm text-base-900 p-2">Like</button>
+                  <button className="btn btn-secondary btn-sm text-base-900 p-2">Comment</button>
+                  <button className="btn btn-accent btn-sm text-base-900 p-2">Donate</button>
                 </div>
               </div>
             </div>
@@ -461,7 +406,7 @@ const Explore = () => {
                 />
                 <div className="flex justify-end gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={() => setCommentModalPostId(null)}>Close</button>
-                  <button className="btn btn-primary btn-sm text-base-100" onClick={submitComment}>Post Comment</button>
+                  <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={submitComment}>Post Comment</button>
                 </div>
               </div>
             </div>

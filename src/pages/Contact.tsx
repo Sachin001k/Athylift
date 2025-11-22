@@ -163,7 +163,7 @@ const Contact = () => {
                   <p className="mb-4 text-base-content/80">
                     Looking for quick answers? Check out our frequently asked questions.
                   </p>
-                  <a href="/faq" className="btn btn-secondary border-none text-base-100">
+                  <a href="/faq" className="btn btn-secondary border-none text-base-900 p-2">
                     Visit FAQ
                   </a>
                 </div>

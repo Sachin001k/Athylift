@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,6 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/lib/supabaseClient';
+import { User } from '@supabase/supabase-js';
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -16,7 +18,9 @@ interface NavbarProps {
 
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
-  const [notificationCount] = useState(3);
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -26,6 +30,38 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
       default:
         return <Moon className="h-5 w-5" />;
     }
+  };
+
+  const loadUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    setUser(data.user ?? null);
+    if (data.user) {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', data.user.id)
+        .eq('is_read', false);
+      setNotificationCount(count ?? 0);
+    } else {
+      setNotificationCount(0);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      loadUser();
+    });
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setNotificationCount(0);
+    navigate('/login');
   };
 
   return (
@@ -41,7 +77,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </button>
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
-              <span className="text-xl font-brand text-base-100 tracking-wide">A</span>
+              <span className="text-xl font-brand text-base-900 p-2 tracking-wide">A</span>
             </div>
             <span className="text-2xl font-brand text-primary tracking-wide">Athlyft</span>
           </Link>
@@ -86,33 +122,42 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <button className="btn btn-ghost btn-circle relative text-base-content">
-            <Bell className="h-5 w-5" />
-            {notificationCount > 0 && (
-              <span className="badge badge-primary badge-sm absolute top-1 right-1 text-base-100">
-                {notificationCount}
-              </span>
-            )}
-          </button>
+          {user && (
+            <button className="btn btn-ghost btn-circle relative text-base-content">
+              <Bell className="h-5 w-5" />
+              {notificationCount > 0 && (
+                <span className="badge badge-primary badge-sm absolute top-1 right-1 text-base-900 p-2">
+                  {notificationCount}
+                </span>
+              )}
+            </button>
+          )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="btn btn-ghost btn-circle avatar">
-                <Avatar>
-                  <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=athlete" />
-                  <AvatarFallback>AT</AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
-              <DropdownMenuItem asChild>
-                <Link to="/profile" className="text-base-content">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/login" className="text-base-content">Logout</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!user ? (
+            <div className="flex items-center gap-2">
+              <Link to="/login" className="btn btn-ghost">Login</Link>
+              <Link to="/register" className="btn btn-primary text-base-900 p-2">Sign Up</Link>
+            </div>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="btn btn-ghost btn-circle avatar">
+                  <Avatar>
+                    <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=athlete" />
+                    <AvatarFallback>{(user.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="text-base-content">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut} className="text-base-content">
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

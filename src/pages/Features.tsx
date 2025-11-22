@@ -108,7 +108,7 @@ const Features = () => {
         </div>
 
         {/* CTA */}
-        <div className="card bg-gradient-to-r from-primary to-secondary text-base-100">
+        <div className="card bg-gradient-to-r from-primary to-secondary text-base-900 p-2">
           <div className="card-body text-center py-12">
             <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
             <p className="text-xl mb-6">Join Athlyft today and experience all these features</p>
@@ -116,7 +116,7 @@ const Features = () => {
               <a href="/register" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
                 Sign Up Free
               </a>
-              <a href="/explore" className="btn btn-lg btn-outline text-base-100 border-base-100 hover:bg-base-100 hover:text-primary">
+              <a href="/explore" className="btn btn-lg btn-outline text-base-900 p-2 border-base-100 hover:bg-base-100 hover:text-primary">
                 Explore Platform
               </a>
             </div>
