@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Edit, Trash2, Eye, Loader2, Check, X } from 'lucide-react';
+import { Edit, Trash2, Loader2, Check, X, Paperclip } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
@@ -252,9 +252,6 @@ const MyPosts = () => {
                   <p className="text-xs text-base-content/60">{new Date(post.created_at).toLocaleString()}</p>
 
                   <div className="flex gap-4 text-sm text-base-content/60 mt-2">
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" /> —
-                    </span>
                     <span>❤️ {post.likes_count ?? 0}</span>
                     <span>💬 {post.comments_count ?? 0}</span>
                     <span>↗️ {post.share_count ?? 0}</span>

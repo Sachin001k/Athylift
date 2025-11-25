@@ -293,14 +293,6 @@ const AddPost = () => {
                   <ImageIcon className="h-4 w-4" />
                   <span>photo</span>
                 </label>
-                <button type="button" className="inline-flex items-center gap-1 hover:text-primary transition">
-                  <Tag className="h-4 w-4" />
-                  <span>tag</span>
-                </button>
-                <button type="button" className="inline-flex items-center gap-1 hover:text-primary transition">
-                  <Share2 className="h-4 w-4" />
-                  <span>share</span>
-                </button>
               </div>
               <button
                 type="button"

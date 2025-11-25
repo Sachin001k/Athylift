@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, WheelEvent } from 'react';
 import { Layout } from '@/components/Layout';
-import { Heart, MessageCircle, Share2, MoreVertical, Play, Gift, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Gift, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 type FeedPost = {
   id: string;
   content: string | null;
+  user_id?: string | null;
   attachment_url: string | null;
   attachment_kind: string | null;
   attachment_preview: string | null;
@@ -26,10 +27,16 @@ type PostComment = {
   created_at: string;
 };
 
+type ProfileInfo = {
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
 const Explore = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [visibleCount, setVisibleCount] = useState(5);
   const [liked, setLiked] = useState<string[]>([]);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -40,14 +47,62 @@ const Explore = () => {
   const [comments, setComments] = useState<{ [postId: string]: PostComment[] }>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
 
-  const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
+  const visiblePosts = posts.slice(0, visibleCount);
+  const videoPosts = visiblePosts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
+
+  const fetchProfiles = async (userIds: (string | null | undefined)[]) => {
+    const idsToFetch = Array.from(
+      new Set(userIds.filter((id): id is string => Boolean(id) && !profileMap[id!]))
+    );
+    if (idsToFetch.length === 0) return;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', idsToFetch);
+    if (error || !data) return;
+    setProfileMap((prev) => {
+      const next = { ...prev };
+      data.forEach((p) => {
+        next[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url };
+      });
+      return next;
+    });
+  };
+
+  const notifyPostOwner = async (postId: string, type: 'like' | 'comment', message?: string) => {
+    const actingUser = user;
+    if (!actingUser) return;
+    const post = posts.find((p) => p.id === postId);
+    const ownerId = post?.user_id;
+    if (!ownerId || ownerId === actingUser.id) return;
+    const actorName =
+      profileMap[actingUser.id]?.full_name || actingUser.email || 'Athlyft member';
+    const title = type === 'like' ? 'Your post was liked' : 'New comment on your post';
+    const body =
+      type === 'like'
+        ? `${actorName} liked your post.`
+        : `${actorName} commented: ${message || 'New comment'}`;
+    try {
+      await supabase.from('notifications').insert({
+        user_id: ownerId,
+        title,
+        body: body.slice(0, 180),
+      });
+    } catch (err) {
+      // Best-effort: ignore notification errors
+    }
+  };
 
   useEffect(() => {
     const loadInitial = async () => {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData.user ?? null);
       await loadPosts(userData.user?.id);
+      if (userData.user?.id) {
+        await fetchProfiles([userData.user.id]);
+      }
     };
     loadInitial();
   }, []);
@@ -56,11 +111,14 @@ const Explore = () => {
     setLoadingPosts(true);
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, attachment_url, attachment_kind, attachment_preview, created_at, likes_count, comments_count, share_count')
-      .order('created_at', { ascending: false });
+      .select('id, user_id, content, attachment_url, attachment_kind, attachment_preview, created_at, likes_count, comments_count, share_count')
+      .order('created_at', { ascending: false })
+      .limit(65);
     if (!error && data) {
       const fetched = data as FeedPost[];
       setPosts(fetched);
+      setVisibleCount(Math.min(5, fetched.length || 0));
+      await fetchProfiles(fetched.map((p) => p.user_id));
       if (userId && fetched.length > 0) {
         const ids = fetched.map((p) => p.id);
         const { data: likedRows } = await supabase
@@ -76,6 +134,10 @@ const Explore = () => {
       toast({ title: 'Could not load posts', description: error.message, variant: 'destructive' });
     }
     setLoadingPosts(false);
+  };
+
+  const showMorePosts = () => {
+    setVisibleCount((prev) => Math.min(prev + 5, posts.length));
   };
 
   const toggleLike = async (postId: string) => {
@@ -121,6 +183,7 @@ const Explore = () => {
           .from('posts')
           .update({ likes_count: currentLikes + 1 })
           .eq('id', postId);
+        await notifyPostOwner(postId, 'like');
       }
     }
   };
@@ -163,6 +226,7 @@ const Explore = () => {
       .order('created_at', { ascending: false });
     if (!error && data) {
       setComments((prev) => ({ ...prev, [postId]: data as PostComment[] }));
+      await fetchProfiles(data.map((c) => c.user_id));
     } else if (error) {
       toast({ title: 'Could not load comments', description: error.message, variant: 'destructive' });
     }
@@ -198,12 +262,45 @@ const Explore = () => {
       .from('posts')
       .update({ comments_count: (posts.find((p) => p.id === commentModalPostId)?.comments_count ?? 0) + 1 })
       .eq('id', commentModalPostId);
+    await fetchProfiles([user.id]);
+    await notifyPostOwner(commentModalPostId, 'comment', commentDraft.trim());
     setCommentDraft('');
   };
 
   const sharePost = async (postId: string) => {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
+
+    const shareUrl = `${window.location.origin}/explore?post=${post.id}`;
+    const shareData = {
+      title: 'Athlyft post',
+      text: post.content || 'Check out this post on Athlyft',
+      url: shareUrl,
+    };
+
+    let shared = false;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        shared = true;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    if (!shared) {
+      try {
+        await navigator.clipboard?.writeText(shareUrl);
+        toast({ title: 'Link copied', description: 'Share it with your friends.' });
+        shared = true;
+      } catch {
+        toast({ title: 'Share unavailable', description: 'Could not open share dialog', variant: 'destructive' });
+      }
+    }
+
+    if (!shared) return;
+
     const nextCount = (post.share_count ?? 0) + 1;
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, share_count: nextCount } : p)));
     const { error } = await supabase.from('posts').update({ share_count: nextCount }).eq('id', postId);
@@ -228,24 +325,30 @@ const Explore = () => {
           {!loadingPosts && posts.length === 0 && (
             <p className="text-sm text-muted-foreground">No posts yet. Create one to get started.</p>
           )}
-          {!loadingPosts && posts.map((post) => (
+          {!loadingPosts && visiblePosts.map((post) => (
             <div key={post.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
               <div className="card-body p-4">
                 {/* Author Header */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-start mb-3">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=member" />
+                      <AvatarImage
+                        src={
+                          profileMap[post.user_id || '']?.avatar_url ||
+                          `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user_id || 'member'}`
+                        }
+                      />
                       <AvatarFallback>US</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold">Athlyft Member</p>
-                      <p className="text-sm text-muted-foreground">Community</p>
+                      <p className="font-semibold">
+                        {profileMap[post.user_id || '']?.full_name || 'Athlyft Member'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {post.user_id ? 'Member' : 'Community'}
+                      </p>
                     </div>
                   </div>
-                  <button className="btn btn-ghost btn-sm btn-circle">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
                 </div>
 
                 {/* Post Media */}
@@ -315,6 +418,14 @@ const Explore = () => {
             </div>
           ))}
         </div>
+
+        {!loadingPosts && visibleCount < posts.length && (
+          <div className="flex justify-center mt-6">
+            <button className="btn btn-outline" onClick={showMorePosts}>
+              Show more
+            </button>
+          </div>
+        )}
       </div>
 
       {showVideoModal && videoPosts.length > 0 && (
@@ -402,10 +513,27 @@ const Explore = () => {
                   <p className="text-sm text-muted-foreground">Be the first to comment.</p>
                 )}
                 {(comments[commentModalPostId] || []).map((c) => (
-                  <div key={c.id} className="rounded-lg border border-base-300 p-2 text-sm">
-                    <p className="font-semibold">{c.user_id ? 'Member' : 'Anon'}</p>
+                  <div key={c.id} className="rounded-lg border border-base-300 p-3 text-sm space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={
+                            profileMap[c.user_id || '']?.avatar_url ||
+                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.user_id || 'anon'}`
+                          }
+                        />
+                        <AvatarFallback>US</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <p className="font-semibold">
+                          {profileMap[c.user_id || '']?.full_name || (c.user_id ? 'Member' : 'Anon')}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(c.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
                     <p>{c.content}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</p>
                   </div>
                 ))}
               </div>

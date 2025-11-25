@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { Mail, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const Contact = () => {
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const isDark = theme === 'dark';
+  const mutedTextClass = isDark ? 'text-white/90' : 'text-muted-foreground';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +43,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className={`min-h-screen bg-base-200 ${isDark ? 'text-white' : 'text-base-content'}`}>
       <Navbar onMenuClick={() => {}} />
       <div className="py-12 px-4">
         <div className="container mx-auto max-w-4xl">
@@ -51,7 +55,7 @@ const Contact = () => {
               </div>
             </div>
             <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Get in Touch</h1>
-            <p className="text-xl text-muted-foreground font-serif">
+            <p className={`text-xl font-serif ${mutedTextClass}`}>
               Have a question or feedback? We'd love to hear from you
             </p>
           </div>
@@ -134,7 +138,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-lg mb-2 text-primary">Email Us</h3>
-                      <p className="text-muted-foreground mb-2">
+                      <p className={`${mutedTextClass} mb-2`}>
                         Our team typically responds within 24 hours
                       </p>
                       <a href="mailto:support@athlyft.com" className="link link-primary">
@@ -160,10 +164,13 @@ const Contact = () => {
               <div className="card bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body">
                   <h3 className="card-title mb-4 text-primary">FAQ</h3>
-                  <p className="mb-4 text-base-content/80">
+                  <p className={`mb-4 ${mutedTextClass}`}>
                     Looking for quick answers? Check out our frequently asked questions.
                   </p>
-                  <a href="/faq" className="btn btn-secondary border-none text-base-900 p-2">
+                  <a
+                    href="/faq"
+                    className={`btn btn-secondary border-none p-2 ${isDark ? 'text-white' : 'text-base-900'}`}
+                  >
                     Visit FAQ
                   </a>
                 </div>

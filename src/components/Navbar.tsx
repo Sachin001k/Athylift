@@ -11,16 +11,28 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   onMenuClick: () => void;
 }
 
+type NotificationItem = {
+  id: string;
+  title: string | null;
+  body: string | null;
+  is_read: boolean | null;
+  created_at?: string | null;
+};
+
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -62,6 +74,39 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     setUser(null);
     setNotificationCount(0);
     navigate('/login');
+  };
+
+  const handleOpenNotifications = async () => {
+    if (!user) return;
+    setLoadingNotifications(true);
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, title, body, is_read, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      toast({ title: 'Could not load notifications', description: error.message, variant: 'destructive' });
+      setLoadingNotifications(false);
+      return;
+    }
+
+    const items = (data as NotificationItem[]) || [];
+    setNotifications(items);
+    const unread = items.filter((n) => !n.is_read).length;
+    setNotificationCount(unread);
+
+    if (unread > 0) {
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      setNotificationCount(0);
+      setNotifications(items.map((n) => ({ ...n, is_read: true })));
+    }
+    setLoadingNotifications(false);
   };
 
   return (
@@ -123,14 +168,38 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </DropdownMenu>
 
           {user && (
-            <button className="btn btn-ghost btn-circle relative text-base-content">
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 && (
-                <span className="badge badge-primary badge-sm absolute top-1 right-1 text-base-900 p-2">
-                  {notificationCount}
-                </span>
-              )}
-            </button>
+            <DropdownMenu onOpenChange={(open) => open && handleOpenNotifications()}>
+              <DropdownMenuTrigger asChild>
+                <button className="btn btn-ghost btn-circle relative text-base-content">
+                  <Bell className="h-5 w-5" />
+                  {notificationCount > 0 && (
+                    <span className="badge badge-primary badge-sm absolute top-1 right-1 text-base-900 p-2">
+                      {notificationCount}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300 w-80">
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="font-semibold text-sm">Notifications</span>
+                  {loadingNotifications && <span className="loading loading-spinner loading-xs text-primary" />}
+                </div>
+                <div className="max-h-80 overflow-y-auto divide-y divide-base-300">
+                  {notifications.length === 0 && !loadingNotifications && (
+                    <p className="text-sm text-muted-foreground px-3 py-2">No notifications yet.</p>
+                  )}
+                  {notifications.map((note) => (
+                    <div key={note.id} className="px-3 py-2">
+                      <p className="text-sm font-semibold">{note.title || 'Notification'}</p>
+                      <p className="text-sm text-muted-foreground">{note.body || 'You have a new update.'}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {note.created_at ? new Date(note.created_at).toLocaleString() : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {!user ? (

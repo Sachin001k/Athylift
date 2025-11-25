@@ -4,10 +4,14 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const mutedTextClass = isDark ? 'text-white/80' : 'text-muted-foreground';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +43,7 @@ const Login = () => {
 
   return (
     <div
-      className="min-h-screen bg-base-200"
+      className={`min-h-screen bg-base-200 ${isDark ? 'text-white' : 'text-base-content'}`}
       style={{
         backgroundImage: "linear-gradient(180deg, rgba(0,119,181,0.08), rgba(0,160,220,0.12)), url('/bg.png')",
         backgroundSize: 'cover',
@@ -58,26 +62,26 @@ const Login = () => {
               backgroundPosition: 'center',
             }}
           >
-            <div className="h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center text-base-900 p-2">
+            <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
               <h1 className="text-5xl font-brand tracking-wide mb-6">Welcome Back!</h1>
-              <p className="text-xl mb-8 font-serif">
+              <p className={`text-xl mb-8 font-serif ${mutedTextClass}`}>
                 Rejoin the Athlyt community to ask freely, support others, and stay connected in a safe space.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center text-base-900 p-2">
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
                     ✓
                   </div>
                   <p>Ask openly or anonymously without judgment</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center text-base-900 p-2">
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
                     ✓
                   </div>
                   <p>Connect with parents and trusted experts</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center text-base-900 p-2">
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
                     ✓
                   </div>
                   <p>Stay informed with private updates and guidance</p>
@@ -91,7 +95,7 @@ const Login = () => {
             <div className="w-full max-w-md mx-auto">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Login to Athlyt</h2>
-                <p className="text-muted-foreground font-serif">
+                <p className={`${mutedTextClass} font-serif`}>
                   Enter your credentials to access your account
                 </p>
               </div>
@@ -99,7 +103,7 @@ const Login = () => {
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Email</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>Email</span>
                   </label>
                   <input
                     type="email"
@@ -113,7 +117,7 @@ const Login = () => {
 
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Password</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>Password</span>
                   </label>
                   <input
                     type="password"
@@ -132,12 +136,12 @@ const Login = () => {
 
                 <label className="label cursor-pointer justify-start gap-3">
                   <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" />
-                  <span className="label-text">Keep me signed in</span>
+                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>Keep me signed in</span>
                 </label>
 
                 <button
                   type="submit"
-                  className="btn w-full bg-primary text-base-900 p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30"
+                  className={`btn w-full bg-primary p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30 ${isDark ? 'text-white' : 'text-base-900'}`}
                   disabled={loading}
                 >
                   {loading ? (
@@ -154,7 +158,7 @@ const Login = () => {
               <div className="divider">OR</div>
 
               <div className="text-center">
-                <p className="text-sm text-base-content">
+                <p className={`text-sm ${isDark ? 'text-white' : 'text-base-content'}`}>
                   Don't have an account?{' '}
                   <Link to="/register" className="link text-primary font-bold">
                     Sign up now

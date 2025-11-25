@@ -4,10 +4,14 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const mutedTextClass = isDark ? 'text-white/80' : 'text-muted-foreground';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,7 +81,7 @@ const Register = () => {
 
   return (
     <div
-      className="min-h-screen bg-base-200"
+      className={`min-h-screen bg-base-200 ${isDark ? 'text-white' : 'text-base-content'}`}
       style={{
         backgroundImage: "linear-gradient(180deg, rgba(0,119,181,0.08), rgba(0,160,220,0.12)), url('/bg.png')",
         backgroundSize: 'cover',
@@ -95,12 +99,12 @@ const Register = () => {
               backgroundPosition: 'center',
             }}
           >
-            <div className="h-full w-full p-12 text-base-900 p-2 flex flex-col justify-center">
+            <div className={`h-full w-full p-12 p-2 flex flex-col justify-center ${isDark ? 'text-white' : 'text-base-900'}`}>
               <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyt</h2>
-              <p className="text-lg font-serif mb-6">
+              <p className={`text-lg font-serif mb-6 ${mutedTextClass}`}>
                 Build your profile, share your journey, and connect with a trusted parenting community.
               </p>
-              <ul className="space-y-3 text-base-100/90">
+              <ul className={`space-y-3 ${isDark ? 'text-white/90' : 'text-base-100/90'}`}>
                 <li>• Set your audience and privacy preferences</li>
                 <li>• Add topics and hashtags you care about</li>
                 <li>• Manage notifications curated for you</li>
@@ -111,7 +115,7 @@ const Register = () => {
           <div className="p-8 lg:p-12">
             <div className="text-center mb-6">
               <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Create your account</h2>
-              <p className="text-muted-foreground font-serif">
+              <p className={`${mutedTextClass} font-serif`}>
                 A few details to personalize your experience.
               </p>
             </div>
@@ -120,7 +124,7 @@ const Register = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">First name</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>First name</span>
                   </label>
                   <input
                     type="text"
@@ -133,7 +137,7 @@ const Register = () => {
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Last name</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>Last name</span>
                   </label>
                   <input
                     type="text"
@@ -148,7 +152,7 @@ const Register = () => {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Email</span>
+                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>Email</span>
                 </label>
                 <input
                   type="email"
@@ -162,7 +166,7 @@ const Register = () => {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Role</span>
+                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>Role</span>
                 </label>
                 <select
                   className="select select-bordered w-full"
@@ -179,7 +183,7 @@ const Register = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Password</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>Password</span>
                   </label>
                   <input
                     type="password"
@@ -193,7 +197,7 @@ const Register = () => {
 
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Confirm Password</span>
+                    <span className={`label-text ${isDark ? 'text-white' : ''}`}>Confirm Password</span>
                   </label>
                   <input
                     type="password"
@@ -208,12 +212,12 @@ const Register = () => {
 
               <label className="label cursor-pointer justify-start gap-3">
                 <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" required />
-                <span className="label-text">I agree to terms and privacy policy</span>
+                <span className={`label-text ${isDark ? 'text-white' : ''}`}>I agree to terms and privacy policy</span>
               </label>
 
               <button
                 type="submit"
-                className="btn w-full bg-primary text-base-900 p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30"
+                className={`btn w-full bg-primary p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30 ${isDark ? 'text-white' : 'text-base-900'}`}
                 disabled={loading}
               >
                 {loading ? (
@@ -230,7 +234,7 @@ const Register = () => {
             <div className="divider">OR</div>
 
             <div className="text-center">
-              <p className="text-sm text-base-content">
+              <p className={`text-sm ${isDark ? 'text-white' : 'text-base-content'}`}>
                 Already have an account?{' '}
                 <Link to="/login" className="link text-primary font-bold">
                   Login here
