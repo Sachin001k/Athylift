@@ -21,6 +21,7 @@ import Pricing from "./pages/Pricing";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import Donations from "./pages/Donations";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/donations"
+              element={
+                <ProtectedRoute>
+                  <Donations />
                 </ProtectedRoute>
               }
             />

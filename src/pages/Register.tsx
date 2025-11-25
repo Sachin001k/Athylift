@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,16 @@ const Register = () => {
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('Parent');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const redirectIfLoggedIn = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        navigate('/explore', { replace: true });
+      }
+    };
+    redirectIfLoggedIn();
+  }, [navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

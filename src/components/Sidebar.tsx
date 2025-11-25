@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, User, FileText, Plus, Info, FileQuestion, Shield, Lock } from 'lucide-react';
+import { Home, User, FileText, Plus, Info, FileQuestion, Shield, Lock, HeartHandshake } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const menuItems = [
     { icon: Home, label: 'Feed', path: '/explore' },
     { icon: User, label: 'Profile', path: '/profile' },
+    { icon: HeartHandshake, label: 'Donations', path: '/donations' },
   ];
 
   const contentItems = [

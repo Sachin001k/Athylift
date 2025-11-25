@@ -30,6 +30,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -48,6 +49,13 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     const { data } = await supabase.auth.getUser();
     setUser(data.user ?? null);
     if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', data.user.id)
+        .single();
+      setProfileAvatar(profile?.avatar_url || null);
+
       const { count } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -56,6 +64,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
       setNotificationCount(count ?? 0);
     } else {
       setNotificationCount(0);
+      setProfileAvatar(null);
     }
   };
 
@@ -73,6 +82,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     await supabase.auth.signOut();
     setUser(null);
     setNotificationCount(0);
+    setProfileAvatar(null);
     navigate('/login');
   };
 
@@ -212,7 +222,12 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               <DropdownMenuTrigger asChild>
                 <button className="btn btn-ghost btn-circle avatar">
                   <Avatar>
-                    <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=athlete" />
+                    <AvatarImage
+                      src={
+                        profileAvatar ||
+                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id || 'athlete'}`
+                      }
+                    />
                     <AvatarFallback>{(user.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </button>

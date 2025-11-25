@@ -48,6 +48,11 @@ const Explore = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
+  const [donateModalPostId, setDonateModalPostId] = useState<string | null>(null);
+  const [donateAmount, setDonateAmount] = useState('');
+  const [donateName, setDonateName] = useState('');
+  const [donateMessage, setDonateMessage] = useState('');
+  const [thankYouInfo, setThankYouInfo] = useState<{ name: string; amount: string } | null>(null);
 
   const visiblePosts = posts.slice(0, visibleCount);
   const videoPosts = visiblePosts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
@@ -214,6 +219,59 @@ const Explore = () => {
 
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
+
+  const openDonateModal = (postId: string) => {
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
+      return;
+    }
+    const defaultName =
+      profileMap[user.id || '']?.full_name || user.email || 'Supporter';
+    setDonateModalPostId(postId);
+    setDonateAmount('');
+    setDonateMessage('');
+    setDonateName(defaultName);
+  };
+
+  const submitDonation = async () => {
+    if (!donateModalPostId) return;
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
+      return;
+    }
+    const numericAmount = parseFloat(donateAmount);
+    if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+      toast({ title: 'Enter an amount', description: 'Please enter a valid amount greater than 0.', variant: 'destructive' });
+      return;
+    }
+    const finalName = donateName.trim() || profileMap[user.id || '']?.full_name || user.email || 'Supporter';
+    try {
+      await supabase.from('donations').insert({
+        user_id: user.id,
+        beneficiary_name: null,
+        post_reference: donateModalPostId,
+        post_id: donateModalPostId,
+        cause_id: null,
+        cause_title: 'Post donation',
+        cause_image: null,
+        amount: numericAmount,
+        currency: 'INR',
+        frequency: 'one-time',
+        payment_method: 'app',
+        message: donateMessage?.trim() || null,
+        dedication: null,
+        country: null,
+        cover_fees: false,
+        allow_updates: false,
+      });
+    } catch (err: any) {
+      toast({ title: 'Could not save donation', description: err.message || 'Try again.', variant: 'destructive' });
+      return;
+    }
+
+    setDonateModalPostId(null);
+    setThankYouInfo({ name: finalName, amount: numericAmount.toFixed(2) });
+  };
 
   const openCommentModal = async (postId: string) => {
     setCommentModalPostId(postId);
@@ -409,7 +467,7 @@ const Explore = () => {
                     <span>{post.share_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-secondary btn-sm gap-2 text-base-900 p-2">
+                  <button className="btn btn-secondary btn-sm gap-2 text-base-900 p-2" onClick={() => openDonateModal(post.id)}>
                     <Gift className="h-5 w-5" />
                     Donate
                   </button>
@@ -550,6 +608,112 @@ const Explore = () => {
                   <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={submitComment}>Post Comment</button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {donateModalPostId && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
+            <button
+              onClick={() => setDonateModalPostId(null)}
+              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage
+                    src={
+                      profileMap[user?.id || '']?.avatar_url ||
+                      (user ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}` : undefined)
+                    }
+                  />
+                  <AvatarFallback>{(user?.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">Send a donation</h3>
+                  <p className="text-sm text-muted-foreground">Support this creator with a quick tip.</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="form-control w-full">
+                  <div className="label">
+                    <span className="label-text">Amount (₹)</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    className="input input-bordered w-full"
+                    placeholder="Enter amount"
+                    value={donateAmount}
+                    onChange={(e) => setDonateAmount(e.target.value)}
+                  />
+                </label>
+                <label className="form-control w-full">
+                  <div className="label">
+                    <span className="label-text">Name</span>
+                    <span className="label-text-alt text-muted-foreground">Auto-filled from your profile</span>
+                  </div>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={donateName}
+                    onChange={(e) => setDonateName(e.target.value)}
+                  />
+                </label>
+                <label className="form-control w-full">
+                  <div className="label">
+                    <span className="label-text">Message (optional)</span>
+                  </div>
+                  <textarea
+                    className="textarea textarea-bordered w-full"
+                    rows={3}
+                    placeholder="Share a note with your donation"
+                    value={donateMessage}
+                    onChange={(e) => setDonateMessage(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="btn btn-ghost btn-sm" onClick={() => setDonateModalPostId(null)}>Cancel</button>
+                <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={submitDonation}>
+                  Donate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {thankYouInfo && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
+            <button
+              onClick={() => setThankYouInfo(null)}
+              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="p-6 space-y-4 text-center">
+              <div className="flex justify-center">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl font-bold text-base-900 shadow-lg border border-base-300">
+                  🎊
+                </div>
+              </div>
+              <h3 className="text-2xl font-semibold">Thank you, {thankYouInfo.name}!</h3>
+              <p className="text-sm text-muted-foreground">
+                We received your ₹{thankYouInfo.amount} donation. Your support helps this creator thrive.
+              </p>
+              <div className="bg-base-200 rounded-xl p-3 text-sm text-base-content border border-base-300">
+                <p className="font-semibold">Message</p>
+                <p className="text-muted-foreground">{donateMessage?.trim() || 'No message provided.'}</p>
+              </div>
+              <button className="btn btn-primary text-base-900 p-2 w-full" onClick={() => setThankYouInfo(null)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

@@ -176,37 +176,6 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="bg-base-100 py-16 px-4">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="card bg-base-200 shadow-md">
-                <div className="card-body">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="avatar">
-                      <div className="w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                        <MessageCircle className="h-6 w-6 text-primary" />
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-base-content">Member {i}</h4>
-                      <div className="flex gap-1">
-                        {[...Array(5)].map((_, j) => (
-                          <Star key={j} className="h-4 w-4 fill-secondary text-secondary" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="font-quote italic text-base-content">
-                    "Athlyt keeps me grounded and supported. Honest advice, zero judgment."
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-base-900 p-2">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-brand tracking-wide mb-4">Ready to feel supported?</h2>
@@ -237,8 +206,6 @@ const Home = () => {
               <ul className="space-y-2 font-serif">
                 <li><Link to="/about" className="link link-hover text-base-content">About us</Link></li>
                 <li><Link to="/contact" className="link link-hover text-base-content">Contact</Link></li>
-                <li className="text-base-content">Jobs</li>
-                <li className="text-base-content">Press kit</li>
               </ul>
             </div>
             <div>
