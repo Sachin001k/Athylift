@@ -61,7 +61,7 @@ const FAQ = () => {
             ))}
           </div>
 
-          <div className="card bg-gradient-to-r from-primary to-secondary text-base-900 p-2 mt-12">
+          <div className="card bg-gradient-to-r from-primary to-secondary text-white mt-12">
             <div className="card-body text-center">
               <h2 className="text-2xl font-brand mb-2">Still have questions?</h2>
               <p className="mb-6 font-serif">Reach us at <a className="underline" href="mailto:support@athlyft.com">support@athlyft.com</a>. We are happy to help.</p>

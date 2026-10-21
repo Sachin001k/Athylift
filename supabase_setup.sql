@@ -260,6 +260,11 @@ create trigger post_comments_change
   after insert or delete on public.post_comments
   for each row execute function public.on_post_comment_change();
 
+create or replace function public.my_profile()
+returns setof public.profiles language sql stable security definer set search_path = public as $$
+  select * from public.profiles where id = auth.uid();
+$$;
+
 create or replace function public.increment_share(p_post_id uuid)
 returns integer language sql security definer set search_path = public as $$
   update public.posts set share_count = share_count + 1
@@ -274,7 +279,11 @@ $$;
 revoke all on public.profiles, public.posts, public.post_likes, public.post_comments,
   public.notifications, public.donations, public.contact_messages from anon, authenticated;
 
-grant select on public.profiles, public.posts, public.post_likes, public.post_comments to anon, authenticated;
+grant select on public.posts, public.post_likes, public.post_comments to anon, authenticated;
+-- email and phone are private: they are left out of the public column grant and
+-- each user reads their own through my_profile().
+grant select (id, full_name, bio, youtube_url, avatar_url, cover_url, role, created_at, updated_at)
+  on public.profiles to anon, authenticated;
 
 grant insert (id, full_name, bio, phone, youtube_url, avatar_url, cover_url, role) on public.profiles to authenticated;
 grant update (full_name, bio, phone, youtube_url, avatar_url, cover_url, role) on public.profiles to authenticated;
@@ -304,6 +313,8 @@ grant insert (name, email, message, user_id) on public.contact_messages to anon,
 
 revoke all on function public.increment_share(uuid) from public;
 grant execute on function public.increment_share(uuid) to anon, authenticated;
+revoke all on function public.my_profile() from public, anon;
+grant execute on function public.my_profile() to authenticated;
 revoke all on function public.actor_display_name(uuid) from public, anon, authenticated;
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 revoke all on function public.handle_user_email_change() from public, anon, authenticated;

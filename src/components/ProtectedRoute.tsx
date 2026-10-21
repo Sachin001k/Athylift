@@ -1,33 +1,14 @@
-import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import { Session } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ProtectedRouteProps = {
   children: JSX.Element;
 };
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [checking, setChecking] = useState(true);
+  // The session is checked once for the whole app, so moving between pages doesn't blank the screen.
+  const { session, loading: checking } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      setChecking(false);
-    };
-
-    loadSession();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
 
   if (checking) {
     return (

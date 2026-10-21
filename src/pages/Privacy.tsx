@@ -118,9 +118,12 @@ const Privacy = () => {
                 <div>
                   <h2 className="card-title mb-2">Questions or concerns?</h2>
                   <p className="mb-4 font-serif">Reach out to us at <a className="underline" href="mailto:privacy@athlyft.com">privacy@athlyft.com</a>. We’re here to help.</p>
-                  <div className="btn btn-sm bg-base-100 text-primary border-none hover:bg-base-100/90 w-max">
+                  <a
+                    href="mailto:privacy@athlyft.com"
+                    className="btn btn-sm bg-base-100 text-primary border-none hover:bg-base-100/90 w-max"
+                  >
                     Email Privacy Team
-                  </div>
+                  </a>
                 </div>
               </div>
             </div>

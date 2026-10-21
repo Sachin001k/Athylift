@@ -76,26 +76,26 @@ const Login = () => {
               backgroundPosition: 'center',
             }}
           >
-            <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
+            <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 text-white`}>
               <h1 className="text-5xl font-brand tracking-wide mb-6">Welcome Back!</h1>
               <p className={`text-xl mb-8 font-serif ${mutedTextClass}`}>
                 Rejoin the Athlyft community to ask freely, support others, and stay connected in a safe space.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
                   <p>Ask openly or anonymously without judgment</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
                   <p>Connect with parents and trusted experts</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
+                  <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
                   <p>Stay informed with private updates and guidance</p>
@@ -150,7 +150,7 @@ const Login = () => {
 
                 <button
                   type="submit"
-                  className={`btn w-full bg-primary p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30 ${isDark ? 'text-white' : 'text-base-900'}`}
+                  className={`btn w-full bg-primary border-none hover:bg-primary/90 shadow-lg shadow-primary/30 text-white`}
                   disabled={loading}
                 >
                   {loading ? (
@@ -169,7 +169,7 @@ const Login = () => {
               <div className="text-center">
                 <p className={`text-sm ${isDark ? 'text-white' : 'text-base-content'}`}>
                   Don't have an account?{' '}
-                  <Link to="/register" className="link text-primary font-bold">
+                  <Link to="/register" state={location.state} className="link text-primary font-bold">
                     Sign up now
                   </Link>
                 </p>

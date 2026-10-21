@@ -43,7 +43,8 @@ const POST_COLUMNS =
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Escapes LIKE wildcards so a search for "50%" matches literally.
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`);
+// PostgREST also treats * as a wildcard and offers no escape for it, so it is dropped.
+const escapeLike = (value: string) => value.replace(/\*/g, '').replace(/[\\%_]/g, (char) => `\\${char}`);
 
 const Explore = () => {
   const { toast } = useToast();
@@ -56,6 +57,8 @@ const Explore = () => {
   // Number of feed rows fetched so far (excludes a pinned shared post), used as the next page offset.
   const [feedOffset, setFeedOffset] = useState(0);
   const pendingLikes = useRef(new Set<string>());
+  // Incremented on every feed reload so a slower, older request can't overwrite newer results.
+  const loadIdRef = useRef(0);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [donateSubmitting, setDonateSubmitting] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(false);
@@ -77,6 +80,8 @@ const Explore = () => {
   const [thankYouInfo, setThankYouInfo] = useState<{ name: string; amount: string } | null>(null);
 
   const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
+  // Clamp in case the post list changed while the video viewer was open.
+  const activeVideo = videoPosts[Math.min(activeVideoIndex, videoPosts.length - 1)];
 
   const fetchProfiles = async (userIds: (string | null | undefined)[]) => {
     const idsToFetch = Array.from(
@@ -98,6 +103,8 @@ const Explore = () => {
   };
 
   useEffect(() => {
+    setShowVideoModal(false);
+    setActiveVideoIndex(0);
     const loadInitial = async () => {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData.user ?? null);
@@ -146,8 +153,11 @@ const Explore = () => {
   };
 
   const loadPosts = async (userId?: string | null) => {
+    const loadId = ++loadIdRef.current;
+    const isStale = () => loadId !== loadIdRef.current;
     setLoadingPosts(true);
     const { data, error } = await fetchPostsPage(0);
+    if (isStale()) return;
     if (!error && data) {
       let fetched = data as FeedPost[];
       setFeedOffset(fetched.length);
@@ -157,14 +167,19 @@ const Explore = () => {
         const { data: shared } = await supabase.from('posts').select(POST_COLUMNS).eq('id', sharedPostId).maybeSingle();
         if (shared) {
           fetched = [shared as FeedPost, ...fetched.filter((p) => p.id !== sharedPostId)];
-        } else {
+        } else if (!isStale()) {
           toast({ title: 'Post not found', description: 'It may have been deleted.' });
         }
       }
+      if (isStale()) return;
       setPosts(fetched);
       await fetchProfiles(fetched.map((p) => p.user_id));
-      setLiked(await fetchLikedIds(userId, fetched.map((p) => p.id)));
+      const likedIds = await fetchLikedIds(userId, fetched.map((p) => p.id));
+      if (isStale()) return;
+      setLiked(likedIds);
     } else if (error) {
+      setPosts([]);
+      setHasMorePosts(false);
       toast({ title: 'Could not load posts', description: error.message, variant: 'destructive' });
     }
     setLoadingPosts(false);
@@ -355,11 +370,14 @@ const Explore = () => {
       .insert({ post_id: commentModalPostId, content: commentDraft.trim(), user_id: user.id })
       .select()
       .single();
-    setCommentSubmitting(false);
     if (error) {
+      setCommentSubmitting(false);
       toast({ title: 'Could not post comment', description: error.message, variant: 'destructive' });
       return;
     }
+    // Clear the draft before re-enabling the button so a second click can't post it again.
+    setCommentDraft('');
+    setCommentSubmitting(false);
     const newComment = data as PostComment;
     setComments((prev) => ({
       ...prev,
@@ -372,7 +390,6 @@ const Explore = () => {
     );
     // The database updates comments_count and notifies the post owner.
     await fetchProfiles([user.id]);
-    setCommentDraft('');
   };
 
   const sharePost = async (postId: string) => {
@@ -495,7 +512,7 @@ const Explore = () => {
                       autoPlay
                     />
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-lg">
-                      <Play className="h-12 w-12 text-base-900 p-2" />
+                      <Play className="h-12 w-12 text-white" />
                     </div>
                   </button>
                 )}
@@ -544,7 +561,7 @@ const Explore = () => {
                     <span>{post.share_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-secondary btn-sm gap-2 text-base-900 p-2" onClick={() => openDonateModal(post.id)}>
+                  <button className="btn btn-secondary btn-sm gap-2 text-white" onClick={() => openDonateModal(post.id)}>
                     <Gift className="h-5 w-5" />
                     Donate
                   </button>
@@ -563,7 +580,7 @@ const Explore = () => {
         )}
       </div>
 
-      {showVideoModal && videoPosts.length > 0 && (
+      {showVideoModal && activeVideo && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onWheel={handleVideoWheel}
@@ -582,9 +599,9 @@ const Explore = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4">
               <div className="lg:col-span-3 bg-black">
                 <video
-                  key={videoPosts[activeVideoIndex].id}
-                  src={videoPosts[activeVideoIndex].attachment_url || undefined}
-                  poster={videoPosts[activeVideoIndex].attachment_preview || undefined}
+                  key={activeVideo.id}
+                  src={activeVideo.attachment_url || undefined}
+                  poster={activeVideo.attachment_preview || undefined}
                   controls
                   autoPlay
                   loop
@@ -596,8 +613,8 @@ const Explore = () => {
                   <span className="badge badge-primary">Video</span>
                   <span className="text-sm text-muted-foreground">Scroll to browse</span>
                 </div>
-                <h3 className="text-xl font-semibold">{videoPosts[activeVideoIndex].content?.slice(0, 60) || 'Video post'}</h3>
-                <p className="text-sm text-muted-foreground">{videoPosts[activeVideoIndex].content}</p>
+                <h3 className="text-xl font-semibold">{activeVideo.content?.slice(0, 60) || 'Video post'}</h3>
+                <p className="text-sm text-muted-foreground">{activeVideo.content}</p>
                 <div className="flex gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={prevVideo}>
                     <ChevronLeft className="h-4 w-4" /> Prev
@@ -608,21 +625,21 @@ const Explore = () => {
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button
-                    className="btn btn-primary btn-sm text-base-900 p-2"
-                    onClick={() => toggleLike(videoPosts[activeVideoIndex].id)}
+                    className="btn btn-primary btn-sm text-white"
+                    onClick={() => toggleLike(activeVideo.id)}
                   >
-                    <Heart className={`h-4 w-4 ${liked.includes(videoPosts[activeVideoIndex].id) ? 'fill-current' : ''}`} />
-                    {liked.includes(videoPosts[activeVideoIndex].id) ? 'Liked' : 'Like'} ({videoPosts[activeVideoIndex].likes_count ?? 0})
+                    <Heart className={`h-4 w-4 ${liked.includes(activeVideo.id) ? 'fill-current' : ''}`} />
+                    {liked.includes(activeVideo.id) ? 'Liked' : 'Like'} ({activeVideo.likes_count ?? 0})
                   </button>
                   <button
-                    className="btn btn-secondary btn-sm text-base-900 p-2"
-                    onClick={() => openCommentModal(videoPosts[activeVideoIndex].id)}
+                    className="btn btn-secondary btn-sm text-white"
+                    onClick={() => openCommentModal(activeVideo.id)}
                   >
-                    Comment ({videoPosts[activeVideoIndex].comments_count ?? 0})
+                    Comment ({activeVideo.comments_count ?? 0})
                   </button>
                   <button
-                    className="btn btn-accent btn-sm text-base-900 p-2"
-                    onClick={() => openDonateModal(videoPosts[activeVideoIndex].id)}
+                    className="btn btn-accent btn-sm text-white"
+                    onClick={() => openDonateModal(activeVideo.id)}
                   >
                     Donate
                   </button>
@@ -716,7 +733,7 @@ const Explore = () => {
                 <div className="flex justify-end gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={() => setCommentModalPostId(null)}>Close</button>
                   <button
-                    className="btn btn-primary btn-sm text-base-900 p-2"
+                    className="btn btn-primary btn-sm text-white"
                     onClick={submitComment}
                     disabled={commentSubmitting || !commentDraft.trim()}
                   >
@@ -793,7 +810,7 @@ const Explore = () => {
               <div className="flex justify-end gap-2">
                 <button className="btn btn-ghost btn-sm" onClick={() => setDonateModalPostId(null)}>Cancel</button>
                 <button
-                  className="btn btn-primary btn-sm text-base-900 p-2"
+                  className="btn btn-primary btn-sm text-white"
                   onClick={submitDonation}
                   disabled={donateSubmitting}
                 >
@@ -822,7 +839,7 @@ const Explore = () => {
             </button>
             <div className="p-6 space-y-4 text-center">
               <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl font-bold text-base-900 shadow-lg border border-base-300">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl font-bold text-white shadow-lg border border-base-300">
                   🎊
                 </div>
               </div>
@@ -834,7 +851,7 @@ const Explore = () => {
                 <p className="font-semibold">Message</p>
                 <p className="text-muted-foreground">{donateMessage?.trim() || 'No message provided.'}</p>
               </div>
-              <button className="btn btn-primary text-base-900 p-2 w-full" onClick={() => setThankYouInfo(null)}>
+              <button className="btn btn-primary text-white w-full" onClick={() => setThankYouInfo(null)}>
                 Close
               </button>
             </div>

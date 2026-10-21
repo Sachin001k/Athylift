@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
@@ -13,6 +13,10 @@ const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const fromResetEmail = searchParams.get('recovery') === '1';
+  // An expired or already-used link comes back with the error in the URL hash.
+  const [linkError] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('error_description'));
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -22,6 +26,9 @@ const ResetPassword = () => {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // Only show the form to someone who arrived from a valid reset email.
+  const canReset = hasSession === true && fromResetEmail && !linkError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,16 +59,16 @@ const ResetPassword = () => {
         <div className="w-full max-w-md bg-base-100 rounded-3xl shadow-2xl border border-base-300/70 p-8 space-y-6">
           <h1 className="text-3xl font-brand tracking-wide text-primary text-center">Choose a new password</h1>
 
-          {hasSession === null && (
+          {hasSession === null && !linkError && (
             <div className="flex justify-center">
               <span className="loading loading-spinner text-primary" />
             </div>
           )}
 
-          {hasSession === false && (
+          {(linkError || (hasSession === false && fromResetEmail)) && (
             <div className="space-y-4 text-center">
               <p className="text-muted-foreground font-serif">
-                This reset link is invalid or has expired. Request a new one.
+                {linkError || 'This reset link is invalid or has expired.'} Request a new one.
               </p>
               <Link to="/forgot-password" className="btn btn-primary w-full">
                 Send a new link
@@ -69,7 +76,18 @@ const ResetPassword = () => {
             </div>
           )}
 
-          {hasSession && (
+          {hasSession !== null && !fromResetEmail && !linkError && (
+            <div className="space-y-4 text-center">
+              <p className="text-muted-foreground font-serif">
+                Open the link in your password reset email to choose a new password.
+              </p>
+              <Link to="/forgot-password" className="btn btn-primary w-full">
+                Send a reset email
+              </Link>
+            </div>
+          )}
+
+          {canReset && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="form-control">
                 <label className="label" htmlFor="new-password">

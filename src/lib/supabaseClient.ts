@@ -29,6 +29,8 @@ const createStubClient = () => {
       signInWithPassword: async () => ({ data: { user: null, session: null }, error }),
       signUp: async () => ({ data: { user: null, session: null }, error }),
       signOut: async () => ({ error }),
+      resetPasswordForEmail: async () => ({ data: {}, error }),
+      updateUser: async () => ({ data: { user: null }, error }),
     },
     from: () => builder,
     storage: {

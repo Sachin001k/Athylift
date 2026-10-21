@@ -169,7 +169,7 @@ const AddPost = () => {
     <Layout showStats={false}>
       <div className="container mx-auto px-4 py-10 max-w-4xl">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-base-900 p-2 font-semibold">in</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white font-semibold">in</div>
           <div className="leading-tight">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">athlete network</p>
             <p className="text-lg font-light text-base-content">Create a post</p>
@@ -178,7 +178,7 @@ const AddPost = () => {
 
         <div className="card bg-base-100 shadow-lg border border-base-300 overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-start gap-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-base-900 p-2 text-sm font-semibold">YO</div>
+            <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white text-sm font-semibold">YO</div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-base-content/90">You</span>
@@ -248,7 +248,7 @@ const AddPost = () => {
                   <button
                     type="button"
                     onClick={removeAttachment}
-                    className="absolute top-2 right-2 rounded-full bg-base-content/80 text-base-900 p-2 text-[10px] px-2 py-0.5"
+                    className="absolute top-2 right-2 rounded-full bg-base-content/80 text-white text-[10px] px-2 py-0.5"
                   >
                     remove
                   </button>
@@ -333,7 +333,7 @@ const AddPost = () => {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="inline-flex items-center justify-center rounded-full bg-primary text-base-900 p-2 text-sm font-light px-4 py-1.5 hover:bg-primary/90 transition disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-full bg-primary text-white text-sm font-light px-4 py-1.5 hover:bg-primary/90 transition disabled:opacity-60"
                 disabled={loading}
               >
                 {loading ? (

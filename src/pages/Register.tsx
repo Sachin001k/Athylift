@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
@@ -8,6 +8,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Carries the page the user originally asked for (set by ProtectedRoute) through Login <-> Register.
+  const fromState = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/explore';
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -24,11 +28,11 @@ const Register = () => {
     const redirectIfLoggedIn = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        navigate('/explore', { replace: true });
+        navigate(redirectTo, { replace: true });
       }
     };
     redirectIfLoggedIn();
-  }, [navigate]);
+  }, [navigate, redirectTo]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +86,7 @@ const Register = () => {
         title: 'Check your email',
         description: 'We sent you a confirmation link. Confirm your email, then log in.',
       });
-      navigate('/login');
+      navigate('/login', { state: location.state });
       return;
     }
 
@@ -91,7 +95,7 @@ const Register = () => {
       description: 'Welcome to Athlyft community',
     });
 
-    navigate('/explore');
+    navigate(redirectTo, { replace: true });
   };
 
   return (
@@ -114,7 +118,7 @@ const Register = () => {
               backgroundPosition: 'center',
             }}
           >
-            <div className={`h-full w-full p-12 p-2 flex flex-col justify-center ${isDark ? 'text-white' : 'text-base-900'}`}>
+            <div className={`h-full w-full p-12 flex flex-col justify-center text-white`}>
               <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyft</h2>
               <p className={`text-lg font-serif mb-6 ${mutedTextClass}`}>
                 Build your profile, share your journey, and connect with a trusted parenting community.
@@ -232,7 +236,7 @@ const Register = () => {
 
               <button
                 type="submit"
-                className={`btn w-full bg-primary p-2 border-none hover:bg-primary/90 shadow-lg shadow-primary/30 ${isDark ? 'text-white' : 'text-base-900'}`}
+                className={`btn w-full bg-primary border-none hover:bg-primary/90 shadow-lg shadow-primary/30 text-white`}
                 disabled={loading}
               >
                 {loading ? (
@@ -251,7 +255,7 @@ const Register = () => {
             <div className="text-center">
               <p className={`text-sm ${isDark ? 'text-white' : 'text-base-content'}`}>
                 Already have an account?{' '}
-                <Link to="/login" className="link text-primary font-bold">
+                <Link to="/login" state={location.state} className="link text-primary font-bold">
                   Login here
                 </Link>
               </p>

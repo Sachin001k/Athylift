@@ -46,11 +46,8 @@ const Profile = () => {
       }
       setUser(userData.user);
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userData.user.id)
-        .maybeSingle();
+      // my_profile() returns the full row, including the private phone and email columns.
+      const { data, error } = await supabase.rpc('my_profile').maybeSingle();
 
       if (error) {
         toast({ title: 'Could not load profile', description: error.message, variant: 'destructive' });
@@ -161,6 +158,7 @@ const Profile = () => {
       setCoverImage(publicUrl);
     } else {
       setProfileImage(publicUrl);
+      window.dispatchEvent(new Event('profile-updated'));
     }
     await removeStoredFile(PROFILE_BUCKET, storagePathFromPublicUrl(PROFILE_BUCKET, previousUrl));
   };
@@ -248,7 +246,7 @@ const Profile = () => {
                   onChange={handleCoverChange}
                   disabled={saving}
                 />
-                <div className="text-base-900 p-2 text-center">
+                <div className="text-white p-2 text-center">
                   <Camera className="h-12 w-12 mx-auto mb-2" />
                   <p>Change Cover</p>
                 </div>
@@ -268,7 +266,7 @@ const Profile = () => {
                     onChange={handleProfileChange}
                     disabled={saving}
                   />
-                  <Camera className="h-8 w-8 text-base-900 p-2" />
+                  <Camera className="h-8 w-8 text-white" />
                 </label>
               </div>
             </div>
@@ -391,7 +389,7 @@ const Profile = () => {
                 />
                 <button
                   onClick={handleAddVideo}
-                  className="btn btn-primary text-base-900 p-2"
+                  className="btn btn-primary text-white"
                   disabled={saving}
                 >
                   <Youtube className="h-4 w-4 mr-2" />

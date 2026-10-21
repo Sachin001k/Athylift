@@ -24,7 +24,7 @@
     --popover-foreground: 0 0% 0%;
 
     --primary: 201 100% 35%; /* Star Command Blue */
-    --primary-foreground: 210 4% 80%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 196 100% 43%; /* Rich Electric Blue */
     --secondary-foreground: 0 0% 0%;
@@ -35,8 +35,8 @@
     --accent: 196 100% 43%; /* Rich Electric Blue */
     --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 0% 0%; /* Black */
-    --destructive-foreground: 210 4% 80%;
+    --destructive: 0 72% 45%; /* Red, so errors stand out in every theme */
+    --destructive-foreground: 0 0% 100%;
 
     --border: 210 2% 53%;
     --input: 210 2% 53%;
@@ -66,7 +66,7 @@
     --popover-foreground: 210 4% 80%;
 
     --primary: 201 100% 35%;
-    --primary-foreground: 210 4% 80%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 196 100% 43%;
     --secondary-foreground: 0 0% 0%;
@@ -77,8 +77,8 @@
     --accent: 196 100% 43%;
     --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 0% 0%;
-    --destructive-foreground: 210 4% 80%;
+    --destructive: 0 72% 45%; /* Red, so errors stand out in every theme */
+    --destructive-foreground: 0 0% 100%;
 
     --border: 210 2% 53%;
     --input: 210 2% 53%;
@@ -116,7 +116,7 @@
     --accent: 210 1% 29%; /* Abbey Gray */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 0% 0%;
+    --destructive: 0 72% 45%; /* Red, so errors stand out in every theme */
     --destructive-foreground: 0 0% 100%;
 
     --border: 210 1% 29%;

@@ -19,12 +19,18 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email || !message) {
+    if (loading) return;
+    if (!name.trim() || !email.trim() || !message.trim()) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all required fields',
         variant: 'destructive',
       });
+      return;
+    }
+    // Same rule as the contact_messages check constraint in supabase_setup.sql.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address', variant: 'destructive' });
       return;
     }
 
@@ -184,7 +190,7 @@ const Contact = () => {
                   </p>
                   <Link
                     to="/faq"
-                    className={`btn btn-secondary border-none p-2 ${isDark ? 'text-white' : 'text-base-900'}`}
+                    className={`btn btn-secondary border-none text-white`}
                   >
                     Visit FAQ
                   </Link>

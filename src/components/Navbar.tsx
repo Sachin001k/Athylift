@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/lib/supabaseClient';
-import { User } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
@@ -39,9 +39,14 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
-  const [notificationCount, setNotificationCount] = useState(0);
+  // Shared across pages, so the header keeps its state while navigating.
+  const {
+    user,
+    loading: authLoading,
+    avatarUrl: profileAvatar,
+    unreadCount: notificationCount,
+    setUnreadCount: setNotificationCount,
+  } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [searchParams] = useSearchParams();
@@ -67,51 +72,13 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     }
   };
 
-  const loadUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    setUser(data.user ?? null);
-    if (data.user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('avatar_url')
-        .eq('id', data.user.id)
-        .maybeSingle();
-      if (profileError) console.warn('Could not load profile:', profileError.message);
-      setProfileAvatar(profile?.avatar_url || null);
-
-      const { count, error: countError } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', data.user.id)
-        .eq('is_read', false);
-      if (countError) console.warn('Could not load notifications:', countError.message);
-      setNotificationCount(count ?? 0);
-    } else {
-      setNotificationCount(0);
-      setProfileAvatar(null);
-    }
-  };
-
-  useEffect(() => {
-    loadUser();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      loadUser();
-    });
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({ title: 'Could not log out', description: error.message, variant: 'destructive' });
       return;
     }
-    setUser(null);
-    setNotificationCount(0);
-    setProfileAvatar(null);
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const handleOpenNotifications = async () => {
@@ -186,7 +153,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           )}
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
-              <span className="text-xl font-brand text-base-900 p-2 tracking-wide">A</span>
+              <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
             <span className="text-2xl font-brand text-primary tracking-wide">Athlyft</span>
           </Link>
@@ -241,7 +208,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                 <button className="btn btn-ghost btn-circle relative text-base-content">
                   <Bell className="h-5 w-5" />
                   {notificationCount > 0 && (
-                    <span className="badge badge-primary badge-sm absolute top-1 right-1 text-base-900 p-2">
+                    <span className="badge badge-primary badge-sm absolute top-1 right-1 text-white">
                       {notificationCount}
                     </span>
                   )}
@@ -270,10 +237,13 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             </DropdownMenu>
           )}
 
-          {!user ? (
+          {authLoading ? (
+            // Same size as the avatar button, so nothing shifts while the session is checked.
+            <div className="h-12 w-12" aria-hidden="true" />
+          ) : !user ? (
             <div className="flex items-center gap-2">
               <Link to="/login" className="btn btn-ghost">Login</Link>
-              <Link to="/register" className="btn btn-primary text-base-900 p-2">Sign Up</Link>
+              <Link to="/register" className="btn btn-primary text-white">Sign Up</Link>
             </div>
           ) : (
             <DropdownMenu>

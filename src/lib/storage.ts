@@ -45,12 +45,15 @@ export const checkAttachment = (
   file: File
 ): { kind: AttachmentKind; contentType: string } | { error: string } => {
   if (file.size > MAX_ATTACHMENT_BYTES) return { error: 'Attachments can be up to 50 MB.' };
+  const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
+  // iPhone HEIC photos upload fine but most browsers can't display them.
+  if (/^image\/hei[cf]$/.test(file.type) || extension === 'heic' || extension === 'heif') {
+    return { error: 'HEIC photos are not supported. Please upload a JPG or PNG instead.' };
+  }
   if (file.type.startsWith('image/')) return { kind: 'image', contentType: file.type };
   if (file.type.startsWith('video/')) return { kind: 'video', contentType: file.type };
-  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  // Browsers report documents inconsistently (e.g. application/octet-stream), so go by extension.
   const documentType = DOCUMENT_TYPES[extension];
-  if (documentType && (!file.type || file.type === documentType)) {
-    return { kind: 'file', contentType: documentType };
-  }
+  if (documentType) return { kind: 'file', contentType: documentType };
   return { error: 'Supported files: images, videos, PDF, TXT, Word and PowerPoint documents.' };
 };

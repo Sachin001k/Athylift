@@ -10,6 +10,7 @@ import {
   MAX_POST_CHARS,
   checkAttachment,
   removeStoredFile,
+  storagePathFromPublicUrl,
   userFilePath,
 } from '@/lib/storage';
 
@@ -101,8 +102,18 @@ const MyPosts = () => {
     setRemoveAttachment(false);
   };
 
+  // savingEdit stays true for the whole save (upload, update, old-file cleanup) so it can't run twice.
   const saveEdit = async () => {
     if (!editingPost || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      await performSaveEdit(editingPost);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const performSaveEdit = async (editingPost: Post) => {
     // Media-only posts are allowed, so only block when nothing would remain.
     const willHaveAttachment = Boolean(editAttachment?.file) || (!removeAttachment && Boolean(editingPost.attachment_url));
     if (!editContent.trim() && !willHaveAttachment) {
@@ -130,13 +141,10 @@ const MyPosts = () => {
       const kind = editAttachment.kind;
       const file = editAttachment.file;
       const path = userFilePath(user.id, file.name);
-      // Disable the modal for the whole upload, which can take a while for large videos.
-      setSavingEdit(true);
       const { error: uploadError } = await supabase.storage
         .from(ATTACHMENT_BUCKET)
         .upload(path, file, { contentType: editAttachment.contentType });
       if (uploadError) {
-        setSavingEdit(false);
         toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
         return;
       }
@@ -162,21 +170,22 @@ const MyPosts = () => {
       updatePayload.attachment_preview = attachmentPreview;
     }
 
-    setSavingEdit(true);
     const { error } = await supabase
       .from('posts')
       .update(updatePayload)
       .eq('id', editingPost.id)
       .eq('user_id', user.id);
-    setSavingEdit(false);
     if (error) {
       if (attachmentPath) await removeStoredFile(ATTACHMENT_BUCKET, attachmentPath);
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
       return;
     }
     // The old file is no longer referenced once the attachment is replaced or removed.
-    if (attachmentUrl !== undefined && editingPost.attachment_path) {
-      await removeStoredFile(ATTACHMENT_BUCKET, editingPost.attachment_path);
+    if (attachmentUrl !== undefined) {
+      await removeStoredFile(
+        ATTACHMENT_BUCKET,
+        editingPost.attachment_path ?? storagePathFromPublicUrl(ATTACHMENT_BUCKET, editingPost.attachment_url)
+      );
     }
     setPosts((prev) =>
       prev.map((p) =>
@@ -342,7 +351,7 @@ const MyPosts = () => {
               <h3 className="text-xl font-semibold">Edit post</h3>
               <div className="card bg-base-100 border border-base-300 shadow-sm">
                 <div className="px-5 pt-5 pb-3 flex items-start gap-3">
-                  <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-base-900 p-2 text-sm font-semibold">
+                  <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white text-sm font-semibold">
                     ME
                   </div>
                   <div className="flex-1">
@@ -460,7 +469,7 @@ const MyPosts = () => {
                           }
                         }}
                       />
-                      <button className="btn btn-sm btn-primary text-base-900 p-2" type="button" onClick={addEditTag}>
+                      <button className="btn btn-sm btn-primary text-white" type="button" onClick={addEditTag}>
                         Add
                       </button>
                     </div>
@@ -495,7 +504,7 @@ const MyPosts = () => {
                           }
                         }}
                       />
-                      <button className="btn btn-sm btn-primary text-base-900 p-2" type="button" onClick={addEditHashtag}>
+                      <button className="btn btn-sm btn-primary text-white" type="button" onClick={addEditHashtag}>
                         Add
                       </button>
                     </div>
@@ -519,7 +528,7 @@ const MyPosts = () => {
                     <button className="btn btn-ghost btn-sm" onClick={() => setEditingPost(null)} disabled={savingEdit}>
                       Cancel
                     </button>
-                    <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={saveEdit} disabled={savingEdit}>
+                    <button className="btn btn-primary btn-sm text-white" onClick={saveEdit} disabled={savingEdit}>
                       {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                       Save changes
                     </button>

@@ -115,7 +115,7 @@ export default {
           "info": "#00A0DC",
           "success": "#0077B5",
           "warning": "#86888A",
-          "error": "#000000",
+          "error": "#D32F2F",
         },
         dark: {
           "primary": "#00A0DC",
@@ -129,7 +129,7 @@ export default {
           "info": "#00A0DC",
           "success": "#0077B5",
           "warning": "#86888A",
-          "error": "#CACCCE",
+          "error": "#D32F2F",
         },
         sport: {
           "primary": "#DA020E", // Monza red
@@ -143,7 +143,7 @@ export default {
           "info": "#0066CC",
           "success": "#DA020E",
           "warning": "#48494A",
-          "error": "#000000",
+          "error": "#D32F2F",
         },
       },
     ],

@@ -1,0 +1,90 @@
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
+
+// Auth state lives here, above the router, so it survives page changes.
+// Without it every page re-checked the session and the header flickered to "logged out" and back.
+interface AuthContextValue {
+  user: User | null;
+  session: Session | null;
+  // True only until the first session check finishes after the app loads.
+  loading: boolean;
+  avatarUrl: string | null;
+  unreadCount: number;
+  setUnreadCount: (count: number) => void;
+  refreshProfile: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const user = session?.user ?? null;
+  const userId = user?.id ?? null;
+
+  useEffect(() => {
+    // getSession reads the stored session locally, so this is fast and needs no network round trip.
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setLoading(false);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!userId) {
+      setAvatarUrl(null);
+      setUnreadCount(0);
+      return;
+    }
+    const [{ data: profile, error: profileError }, { count, error: countError }] = await Promise.all([
+      supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false),
+    ]);
+    if (profileError) console.warn('Could not load profile:', profileError.message);
+    else setAvatarUrl(profile?.avatar_url || null);
+    if (countError) console.warn('Could not load notifications:', countError.message);
+    else setUnreadCount(count ?? 0);
+  }, [userId]);
+
+  // Load avatar and unread count once per signed-in user (not on every token refresh or page change).
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
+
+  // Profile.tsx fires this after a new avatar is saved.
+  useEffect(() => {
+    const onProfileUpdated = () => {
+      refreshProfile();
+    };
+    window.addEventListener('profile-updated', onProfileUpdated);
+    return () => window.removeEventListener('profile-updated', onProfileUpdated);
+  }, [refreshProfile]);
+
+  return (
+    <AuthContext.Provider
+      value={{ user, session, loading, avatarUrl, unreadCount, setUnreadCount, refreshProfile }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
