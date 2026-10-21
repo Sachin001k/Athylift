@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -25,6 +26,15 @@ type Donation = {
   beneficiary_name: string | null;
   post_reference: string | null;
   post_id: string | null;
+  status: string;
+};
+
+const formatAmount = (amount: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${amount} ${currency}`;
+  }
 };
 
 const Donations = () => {
@@ -44,7 +54,7 @@ const Donations = () => {
       const { data, error } = await supabase
         .from('donations')
         .select(
-          'id, amount, currency, frequency, payment_method, message, dedication, country, cover_fees, allow_updates, created_at, cause_title, cause_image, beneficiary_name, post_reference, post_id',
+          'id, amount, currency, frequency, payment_method, message, dedication, country, cover_fees, allow_updates, created_at, cause_title, cause_image, beneficiary_name, post_reference, post_id, status',
         )
         .eq('user_id', userData.user.id)
         .order('created_at', { ascending: false });
@@ -71,7 +81,7 @@ const Donations = () => {
           </div>
         </div>
 
-        {!user && (
+        {!loading && !user && (
           <Alert>
             <AlertDescription>Please log in to view your donations.</AlertDescription>
           </Alert>
@@ -123,13 +133,14 @@ const Donations = () => {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary">
-                      {donation.amount} {donation.currency}
+                      {formatAmount(Number(donation.amount), donation.currency)}
                     </Badge>
                     <span className="text-xs text-base-content/60">
                       {new Date(donation.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-base-content/70">
+                    <Badge variant={donation.status === 'paid' ? 'default' : 'outline'}>{donation.status}</Badge>
                     <Badge variant="outline">{donation.frequency}</Badge>
                     {donation.payment_method && <Badge variant="outline">{donation.payment_method}</Badge>}
                     {donation.cover_fees && <Badge variant="outline">Covered fees</Badge>}
@@ -139,10 +150,14 @@ const Donations = () => {
                       <span className="font-medium">Beneficiary:</span> {donation.beneficiary_name}
                     </p>
                   )}
-                  {(donation.post_id || donation.post_reference) && (
-                    <p className="text-sm text-base-content/80">
-                      {donation.post_id ? `Post: ${donation.post_id}` : donation.post_reference}
-                    </p>
+                  {donation.post_id ? (
+                    <Link to={`/explore?post=${donation.post_id}`} className="link link-primary text-sm">
+                      View post
+                    </Link>
+                  ) : (
+                    donation.post_reference && (
+                      <p className="text-sm text-base-content/80">{donation.post_reference}</p>
+                    )
                   )}
                   {donation.message && <p className="text-sm text-base-content/80">“{donation.message}”</p>}
                   {donation.dedication && (

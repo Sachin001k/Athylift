@@ -4,7 +4,7 @@ import { Navbar } from '@/components/Navbar';
 const Privacy = () => {
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="card bg-base-100 shadow-xl mb-6">
@@ -19,7 +19,7 @@ const Privacy = () => {
 
           <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body space-y-2 font-serif">
-              <p>Welcome to Athlyt. This Privacy Policy outlines how we collect, use, and protect your data across our platform.</p>
+              <p>Welcome to Athlyft. This Privacy Policy outlines how we collect, use, and protect your data across our platform.</p>
               <p className="text-sm text-muted-foreground">Last updated: May 7, 2025.</p>
             </div>
           </div>
@@ -117,7 +117,7 @@ const Privacy = () => {
                 <Mail className="h-8 w-8 flex-shrink-0 mt-1" />
                 <div>
                   <h2 className="card-title mb-2">Questions or concerns?</h2>
-                  <p className="mb-4 font-serif">Reach out to us at <a className="underline" href="mailto:privacy@Athlyt.com">privacy@Athlyt.com</a>. We’re here to help.</p>
+                  <p className="mb-4 font-serif">Reach out to us at <a className="underline" href="mailto:privacy@athlyft.com">privacy@athlyft.com</a>. We’re here to help.</p>
                   <div className="btn btn-sm bg-base-100 text-primary border-none hover:bg-base-100/90 w-max">
                     Email Privacy Team
                   </div>

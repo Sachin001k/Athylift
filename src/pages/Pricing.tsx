@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 
@@ -15,6 +16,7 @@ const Pricing = () => {
         'Community support',
       ],
       buttonText: 'Get Started',
+      to: '/register',
       buttonClass: 'btn-outline',
     },
     {
@@ -32,6 +34,8 @@ const Pricing = () => {
         'Custom profile URL',
       ],
       buttonText: 'Go Pro',
+      // Paid plans have no checkout yet; interested users contact the team.
+      to: '/contact',
       buttonClass: 'btn-primary',
       popular: true,
     },
@@ -48,13 +52,14 @@ const Pricing = () => {
         'Supporter badge',
       ],
       buttonText: 'Become a Supporter',
+      to: '/contact',
       buttonClass: 'btn-secondary',
     },
   ];
 
   return (
     <div className="min-h-screen bg-base-200">
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="container mx-auto max-w-6xl py-12 px-4">
         {/* Hero */}
         <div className="text-center mb-16">
@@ -95,9 +100,9 @@ const Pricing = () => {
                   ))}
                 </ul>
 
-                <button className={`btn ${plan.buttonClass} w-full`}>
+                <Link to={plan.to} className={`btn ${plan.buttonClass} w-full`}>
                   {plan.buttonText}
-                </button>
+                </Link>
               </div>
             </div>
           ))}

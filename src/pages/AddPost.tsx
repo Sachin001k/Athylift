@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Upload, Loader2, Image as ImageIcon, Tag, Share2, Globe2, Paperclip } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  ATTACHMENT_BUCKET,
+  AttachmentKind,
+  MAX_POST_CHARS as MAX_CHARS,
+  checkAttachment,
+  removeStoredFile,
+  userFilePath,
+} from '@/lib/storage';
 
-const MAX_CHARS = 300;
-const ATTACHMENT_BUCKET = 'post-attachments';
-
-type Attachment = { kind: 'image' | 'video' | 'file'; url?: string; name?: string; file?: File };
+type Attachment = { kind: AttachmentKind; url?: string; name?: string; file?: File; contentType?: string };
 
 const AddPost = () => {
   const { toast } = useToast();
@@ -20,24 +25,32 @@ const AddPost = () => {
   const [hashtagInput, setHashtagInput] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Release the in-memory preview when the attachment changes or the page unmounts.
+  useEffect(() => {
+    const previewUrl = attachment?.url;
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [attachment]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset so choosing the same file again (after removing it) still fires onChange.
+    e.target.value = '';
     if (file) handleFile(file);
   };
 
   const handleFile = (file: File) => {
-    const kind = file.type.startsWith('image/')
-      ? 'image'
-      : file.type.startsWith('video/')
-      ? 'video'
-      : 'file';
-
+    const checked = checkAttachment(file);
+    if ('error' in checked) {
+      toast({ title: 'Unsupported file', description: checked.error, variant: 'destructive' });
+      return;
+    }
+    const { kind, contentType } = checked;
     if (kind === 'image' || kind === 'video') {
-      const reader = new FileReader();
-      reader.onloadend = () => setAttachment({ kind, url: reader.result as string, name: file.name, file });
-      reader.readAsDataURL(file);
+      setAttachment({ kind, url: URL.createObjectURL(file), name: file.name, file, contentType });
     } else {
-      setAttachment({ kind, name: file.name, file });
+      setAttachment({ kind, name: file.name, file, contentType });
     }
   };
 
@@ -49,6 +62,7 @@ const AddPost = () => {
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     if (!content.trim() && !attachment) {
       toast({
         title: 'Add something first',
@@ -58,6 +72,8 @@ const AddPost = () => {
       return;
     }
 
+    // Set before any await so a quick double-click can't create two posts.
+    setLoading(true);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       toast({
@@ -65,19 +81,18 @@ const AddPost = () => {
         description: 'Please log in to create a post.',
         variant: 'destructive',
       });
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     let attachmentUrl: string | null = null;
     let attachmentPath: string | null = null;
 
     if (attachment?.file) {
-      attachmentPath = `${userData.user.id}/${Date.now()}-${attachment.file.name}`;
+      attachmentPath = userFilePath(userData.user.id, attachment.file.name);
       const { error: uploadError } = await supabase.storage
         .from(ATTACHMENT_BUCKET)
-        .upload(attachmentPath, attachment.file, { upsert: true });
+        .upload(attachmentPath, attachment.file, { contentType: attachment.contentType });
 
       if (uploadError) {
         toast({
@@ -109,13 +124,14 @@ const AddPost = () => {
       tags,
       hashtags,
       attachment_kind: attachment?.kind ?? null,
-      attachment_name: attachment?.name ?? null,
-      attachment_preview: attachment?.url ?? null,
+      attachment_name: attachment?.name?.slice(0, 300) ?? null,
+      attachment_preview: null,
       attachment_url: attachmentUrl,
       attachment_path: attachmentPath,
     });
 
     if (error) {
+      if (attachmentPath) await removeStoredFile(ATTACHMENT_BUCKET, attachmentPath);
       toast({
         title: 'Could not post',
         description: error.message,
@@ -258,7 +274,17 @@ const AddPost = () => {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {tags.map((t) => (
-                    <span key={t} className="badge badge-primary badge-outline">@{t.replace(/^@/, '')}</span>
+                    <span key={t} className="badge badge-primary badge-outline gap-1">
+                      @{t.replace(/^@/, '')}
+                      <button
+                        type="button"
+                        onClick={() => setTags(tags.filter((tag) => tag !== t))}
+                        className="ml-1 text-xs"
+                        aria-label={`Remove tag ${t}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -278,7 +304,17 @@ const AddPost = () => {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {hashtags.map((t) => (
-                    <span key={t} className="badge badge-secondary badge-outline">#{t.replace(/^#/, '')}</span>
+                    <span key={t} className="badge badge-secondary badge-outline gap-1">
+                      #{t.replace(/^#/, '')}
+                      <button
+                        type="button"
+                        onClick={() => setHashtags(hashtags.filter((tag) => tag !== t))}
+                        className="ml-1 text-xs"
+                        aria-label={`Remove hashtag ${t}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>

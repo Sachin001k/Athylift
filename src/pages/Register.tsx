@@ -42,13 +42,25 @@ const Register = () => {
       return;
     }
 
+    if (password.length < 8) {
+      toast({
+        title: 'Password too short',
+        description: 'Use at least 8 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
+    // The database creates the profile row from this metadata (see supabase_setup.sql).
+    const fullName = `${firstName} ${lastName}`.trim();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { first_name: firstName, last_name: lastName, role },
+        data: { full_name: fullName, first_name: firstName, last_name: lastName, role },
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
 
@@ -62,21 +74,15 @@ const Register = () => {
       return;
     }
 
-    const fullName = `${firstName} ${lastName}`.trim();
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      full_name: fullName || data.user.email,
-      role,
-      email: data.user.email,
-    });
+    setLoading(false);
 
-    if (profileError) {
+    // With email confirmation enabled there is no session until the user clicks the link.
+    if (!data.session) {
       toast({
-        title: 'Profile setup failed',
-        description: profileError.message,
-        variant: 'destructive',
+        title: 'Check your email',
+        description: 'We sent you a confirmation link. Confirm your email, then log in.',
       });
-      setLoading(false);
+      navigate('/login');
       return;
     }
 
@@ -85,7 +91,6 @@ const Register = () => {
       description: 'Welcome to Athlyft community',
     });
 
-    setLoading(false);
     navigate('/explore');
   };
 
@@ -98,7 +103,7 @@ const Register = () => {
         backgroundPosition: 'center',
       }}
     >
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="flex items-center justify-center p-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 w-full max-w-5xl bg-base-100 rounded-3xl shadow-2xl overflow-hidden border border-base-300/70">
           <div
@@ -110,7 +115,7 @@ const Register = () => {
             }}
           >
             <div className={`h-full w-full p-12 p-2 flex flex-col justify-center ${isDark ? 'text-white' : 'text-base-900'}`}>
-              <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyt</h2>
+              <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyft</h2>
               <p className={`text-lg font-serif mb-6 ${mutedTextClass}`}>
                 Build your profile, share your journey, and connect with a trusted parenting community.
               </p>

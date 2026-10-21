@@ -4,7 +4,7 @@ import { Navbar } from '@/components/Navbar';
 const Terms = () => {
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="card bg-base-100 shadow-xl mb-8">
@@ -12,7 +12,7 @@ const Terms = () => {
               <FileText className="h-12 w-12 text-primary" />
               <div>
                 <h1 className="text-3xl font-brand tracking-wide mb-2">Terms & Conditions</h1>
-                <p className="font-serif">Welcome to Athlyt. Please review these terms carefully.</p>
+                <p className="font-serif">Welcome to Athlyft. Please review these terms carefully.</p>
               </div>
             </div>
           </div>
@@ -21,7 +21,7 @@ const Terms = () => {
             <div className="card-body space-y-6 font-serif">
               <div>
                 <h2 className="text-2xl font-semibold flex items-center gap-2"><Shield className="h-6 w-6 text-primary" />Acceptance of Terms</h2>
-                <p>By using Athlyt, you acknowledge and agree to comply with these terms. If you do not agree, please discontinue use immediately.</p>
+                <p>By using Athlyft, you acknowledge and agree to comply with these terms. If you do not agree, please discontinue use immediately.</p>
               </div>
 
               <div>
@@ -45,7 +45,7 @@ const Terms = () => {
               </div>
 
               <div className="rounded-lg border border-border p-4 bg-base-200">
-                <p>For any questions, please contact us at <a className="link text-primary" href="mailto:support@soccersearch.com">support@soccersearch.com</a>.</p>
+                <p>For any questions, please contact us at <a className="link text-primary" href="mailto:support@athlyft.com">support@athlyft.com</a>.</p>
               </div>
             </div>
           </div>

@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Edit, Trash2, Loader2, Check, X, Paperclip } from 'lucide-react';
+import { Edit, Trash2, Loader2, Check, X, Paperclip, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
+import {
+  ATTACHMENT_BUCKET,
+  AttachmentKind,
+  MAX_POST_CHARS,
+  checkAttachment,
+  removeStoredFile,
+  userFilePath,
+} from '@/lib/storage';
 
-const ATTACHMENT_BUCKET = 'post-attachments';
-
-type Attachment = { kind: 'image' | 'video' | 'file'; url?: string; name?: string; file?: File };
+type Attachment = { kind: AttachmentKind; url?: string; name?: string; file?: File; contentType?: string };
 
 type Post = {
   id: string;
@@ -15,6 +21,8 @@ type Post = {
   created_at: string;
   attachment_url: string | null;
   attachment_kind: string | null;
+  attachment_path?: string | null;
+  attachment_name?: string | null;
   likes_count?: number | null;
   comments_count?: number | null;
   share_count?: number | null;
@@ -39,6 +47,22 @@ const MyPosts = () => {
   const [editHashtagInput, setEditHashtagInput] = useState('');
 
   useEffect(() => {
+    const previewUrl = editAttachment?.url;
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [editAttachment]);
+
+  useEffect(() => {
+    if (!editingPost) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !savingEdit) setEditingPost(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editingPost, savingEdit]);
+
+  useEffect(() => {
     const load = async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -55,7 +79,7 @@ const MyPosts = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, created_at, attachment_url, attachment_kind, likes_count, comments_count, share_count, tags, hashtags')
+      .select('id, content, created_at, attachment_url, attachment_kind, attachment_path, attachment_name, likes_count, comments_count, share_count, tags, hashtags')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) {
@@ -78,9 +102,11 @@ const MyPosts = () => {
   };
 
   const saveEdit = async () => {
-    if (!editingPost) return;
-    if (!editContent.trim()) {
-      toast({ title: 'Add content', description: 'Post cannot be empty.', variant: 'destructive' });
+    if (!editingPost || savingEdit) return;
+    // Media-only posts are allowed, so only block when nothing would remain.
+    const willHaveAttachment = Boolean(editAttachment?.file) || (!removeAttachment && Boolean(editingPost.attachment_url));
+    if (!editContent.trim() && !willHaveAttachment) {
+      toast({ title: 'Add content', description: 'Add some text or media.', variant: 'destructive' });
       return;
     }
     if (!user) {
@@ -103,11 +129,14 @@ const MyPosts = () => {
     } else if (editAttachment?.file) {
       const kind = editAttachment.kind;
       const file = editAttachment.file;
-      const path = `${user.id}/${Date.now()}-${file.name}`;
+      const path = userFilePath(user.id, file.name);
+      // Disable the modal for the whole upload, which can take a while for large videos.
+      setSavingEdit(true);
       const { error: uploadError } = await supabase.storage
         .from(ATTACHMENT_BUCKET)
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { contentType: editAttachment.contentType });
       if (uploadError) {
+        setSavingEdit(false);
         toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
         return;
       }
@@ -115,8 +144,8 @@ const MyPosts = () => {
       attachmentUrl = data.publicUrl;
       attachmentPath = path;
       attachmentKind = kind;
-      attachmentName = file.name;
-      attachmentPreview = editAttachment.url ?? null;
+      attachmentName = file.name.slice(0, 300);
+      attachmentPreview = null;
     }
 
     const updatePayload: Record<string, unknown> = {
@@ -141,8 +170,13 @@ const MyPosts = () => {
       .eq('user_id', user.id);
     setSavingEdit(false);
     if (error) {
+      if (attachmentPath) await removeStoredFile(ATTACHMENT_BUCKET, attachmentPath);
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
       return;
+    }
+    // The old file is no longer referenced once the attachment is replaced or removed.
+    if (attachmentUrl !== undefined && editingPost.attachment_path) {
+      await removeStoredFile(ATTACHMENT_BUCKET, editingPost.attachment_path);
     }
     setPosts((prev) =>
       prev.map((p) =>
@@ -156,6 +190,10 @@ const MyPosts = () => {
                 attachmentUrl !== undefined ? attachmentUrl : p.attachment_url,
               attachment_kind:
                 attachmentKind !== undefined ? attachmentKind : p.attachment_kind,
+              attachment_path:
+                attachmentPath !== undefined ? attachmentPath : p.attachment_path,
+              attachment_name:
+                attachmentName !== undefined ? attachmentName : p.attachment_name,
             }
           : p
       )
@@ -167,18 +205,16 @@ const MyPosts = () => {
   };
 
   const handleEditFile = (file: File) => {
-    const kind = file.type.startsWith('image/')
-      ? 'image'
-      : file.type.startsWith('video/')
-      ? 'video'
-      : 'file';
+    const checked = checkAttachment(file);
+    if ('error' in checked) {
+      toast({ title: 'Unsupported file', description: checked.error, variant: 'destructive' });
+      return;
+    }
+    const { kind, contentType } = checked;
     if (kind === 'image' || kind === 'video') {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        setEditAttachment({ kind, url: reader.result as string, name: file.name, file });
-      reader.readAsDataURL(file);
+      setEditAttachment({ kind, url: URL.createObjectURL(file), name: file.name, file, contentType });
     } else {
-      setEditAttachment({ kind, name: file.name, file });
+      setEditAttachment({ kind, name: file.name, file, contentType });
     }
     setRemoveAttachment(false);
   };
@@ -204,18 +240,21 @@ const MyPosts = () => {
   };
 
   const confirmDelete = async (postId: string) => {
+    if (!user) return;
     if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    const attachmentPath = posts.find((p) => p.id === postId)?.attachment_path;
     setDeletingId(postId);
     const { error } = await supabase
       .from('posts')
       .delete()
       .eq('id', postId)
-      .eq('user_id', user?.id ?? '');
+      .eq('user_id', user.id);
     setDeletingId(null);
     if (error) {
       toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
       return;
     }
+    await removeStoredFile(ATTACHMENT_BUCKET, attachmentPath);
     setPosts((prev) => prev.filter((p) => p.id !== postId));
     toast({ title: 'Post deleted' });
   };
@@ -244,8 +283,19 @@ const MyPosts = () => {
                 )}
                 {post.attachment_kind === 'video' && post.attachment_url && (
                   <div className="w-full h-[170px] bg-black overflow-hidden">
-                    <video src={post.attachment_url} className="w-full h-full object-cover" controls />
+                    <video src={post.attachment_url} className="w-full h-full object-cover" controls preload="metadata" />
                   </div>
+                )}
+                {post.attachment_kind === 'file' && post.attachment_url && (
+                  <a
+                    href={post.attachment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 mx-6 mt-6 rounded-lg border border-base-300 px-3 py-2 text-sm hover:border-primary"
+                  >
+                    <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                    <span className="truncate">{post.attachment_name || 'Open attachment'}</span>
+                  </a>
                 )}
                 <div className="card-body flex-1 overflow-hidden">
                   <p className="text-sm text-base-content/80 whitespace-pre-line line-clamp-3">{post.content}</p>
@@ -258,12 +308,13 @@ const MyPosts = () => {
                   </div>
 
                   <div className="card-actions justify-end mt-4">
-                    <button className="btn btn-sm btn-ghost text-base-content" onClick={() => startEdit(post)}>
+                    <button className="btn btn-sm btn-ghost text-base-content" onClick={() => startEdit(post)} aria-label="Edit post">
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       className="btn btn-sm btn-ghost text-error"
                       onClick={() => confirmDelete(post.id)}
+                      aria-label="Delete post"
                       disabled={deletingId === post.id}
                     >
                       {deletingId === post.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -277,11 +328,13 @@ const MyPosts = () => {
       </div>
 
       {editingPost && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-3xl">
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-y-auto max-h-[95vh] w-full max-w-3xl">
             <button
               onClick={() => setEditingPost(null)}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
+              disabled={savingEdit}
             >
               <X className="h-4 w-4" />
             </button>
@@ -309,6 +362,7 @@ const MyPosts = () => {
                     <textarea
                       className="textarea textarea-bordered w-full"
                       rows={4}
+                      maxLength={Math.max(MAX_POST_CHARS, editingPost.content?.length ?? 0)}
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
                       placeholder="Update your post caption..."
@@ -323,10 +377,12 @@ const MyPosts = () => {
                     <label className="flex flex-col items-center justify-center gap-2 cursor-pointer">
                       <input
                         type="file"
-                        accept="image/*,video/*"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
+                          // Reset so choosing the same file again still fires onChange.
+                          e.target.value = '';
                           if (file) handleEditFile(file);
                         }}
                       />
@@ -335,6 +391,19 @@ const MyPosts = () => {
                         Drag and drop media to replace (leave empty to keep current)
                       </p>
                     </label>
+                    {!editAttachment && editingPost.attachment_url && (
+                      <p className={`mt-3 text-xs ${removeAttachment ? 'text-error font-semibold' : 'text-muted-foreground'}`}>
+                        {removeAttachment
+                          ? 'Current media will be removed when you save.'
+                          : `Current: ${editingPost.attachment_name || editingPost.attachment_kind || 'attachment'}`}
+                      </p>
+                    )}
+                    {editAttachment && !editAttachment.url && (
+                      <p className="mt-3 text-sm flex items-center justify-center gap-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        {editAttachment.name}
+                      </p>
+                    )}
                     {editAttachment && editAttachment.url && (
                       <div className="mt-3">
                         {editAttachment.kind === 'image' ? (

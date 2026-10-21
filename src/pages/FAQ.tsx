@@ -1,11 +1,12 @@
+import { Link } from 'react-router-dom';
 import { HelpCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 
 const FAQ = () => {
   const faqs = [
     {
-      question: 'What is Parently?',
-      answer: 'Parently is a safe, supportive platform where you can freely ask parenting or personal questions—without judgment. You can remain anonymous and connect with a community that understands your journey.',
+      question: 'What is Athlyft?',
+      answer: 'Athlyft is a safe, supportive platform where you can freely ask parenting or personal questions—without judgment. You can remain anonymous and connect with a community that understands your journey.',
     },
     {
       question: 'Can I ask questions anonymously?',
@@ -28,14 +29,14 @@ const FAQ = () => {
       answer: 'Each post and reply has a "Report" button. Our moderation team reviews all flagged content within 24 hours to keep the community safe.',
     },
     {
-      question: 'Is Parently free to use?',
-      answer: 'Yes, Parently is completely free. We’re here to support your journey, not profit from your privacy.',
+      question: 'Is Athlyft free to use?',
+      answer: 'Yes, Athlyft is completely free. We’re here to support your journey, not profit from your privacy.',
     },
   ];
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-10">
@@ -63,10 +64,10 @@ const FAQ = () => {
           <div className="card bg-gradient-to-r from-primary to-secondary text-base-900 p-2 mt-12">
             <div className="card-body text-center">
               <h2 className="text-2xl font-brand mb-2">Still have questions?</h2>
-              <p className="mb-6 font-serif">Reach us at <a className="underline" href="mailto:support@parently.app">support@parently.app</a>. We are happy to help.</p>
-              <a href="/contact" className="btn bg-base-100 text-primary border-none mx-auto hover:bg-base-100/90">
+              <p className="mb-6 font-serif">Reach us at <a className="underline" href="mailto:support@athlyft.com">support@athlyft.com</a>. We are happy to help.</p>
+              <Link to="/contact" className="btn bg-base-100 text-primary border-none mx-auto hover:bg-base-100/90">
                 Contact Support
-              </a>
+              </Link>
             </div>
           </div>
         </div>

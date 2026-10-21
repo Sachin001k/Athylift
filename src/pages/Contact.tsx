@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { Mail, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
 import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/lib/supabaseClient';
 
 const Contact = () => {
   const { toast } = useToast();
@@ -27,10 +29,23 @@ const Contact = () => {
     }
 
     setLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
+    const { error } = await supabase.from('contact_messages').insert({
+      name: name.trim(),
+      email: email.trim(),
+      message: message.trim(),
+    });
+
+    if (error) {
+      toast({
+        title: 'Message not sent',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
     toast({
       title: 'Message sent!',
       description: 'We\'ll get back to you as soon as possible',
@@ -44,7 +59,7 @@ const Contact = () => {
 
   return (
     <div className={`min-h-screen bg-base-200 ${isDark ? 'text-white' : 'text-base-content'}`}>
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           {/* Hero */}
@@ -167,12 +182,12 @@ const Contact = () => {
                   <p className={`mb-4 ${mutedTextClass}`}>
                     Looking for quick answers? Check out our frequently asked questions.
                   </p>
-                  <a
-                    href="/faq"
+                  <Link
+                    to="/faq"
                     className={`btn btn-secondary border-none p-2 ${isDark ? 'text-white' : 'text-base-900'}`}
                   >
                     Visit FAQ
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>

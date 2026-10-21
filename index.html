@@ -10,14 +10,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <meta property="og:title" content="d4b730e5-55a5-4bd3-b03b-054f3bb532be" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="Athlyft - Social Platform for Athletes" />
+    <meta property="og:description" content="Connect with athletes, share your journey, and build your sports community" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:card" content="summary" />
+
+    <!-- Apply the saved theme before first paint to avoid a light/dark flash. -->
+    <script>
+      try {
+        var savedTheme = localStorage.getItem('athlyft-theme');
+        document.documentElement.setAttribute('data-theme', (savedTheme === 'dark' || savedTheme === 'sport') ? savedTheme : 'light');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    </script>
   </head>
 
   <body>

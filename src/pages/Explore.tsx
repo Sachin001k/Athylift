@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, WheelEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Heart, MessageCircle, Share2, Play, Gift, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Gift, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -12,6 +13,7 @@ type FeedPost = {
   user_id?: string | null;
   attachment_url: string | null;
   attachment_kind: string | null;
+  attachment_name?: string | null;
   attachment_preview: string | null;
   created_at?: string;
   likes_count?: number | null;
@@ -32,11 +34,32 @@ type ProfileInfo = {
   avatar_url: string | null;
 };
 
+const PAGE_SIZE = 10;
+const MAX_COMMENT_CHARS = 2000;
+const MAX_DONATION = 1000000;
+const MAX_DONATION_MESSAGE = 1000;
+const POST_COLUMNS =
+  'id, user_id, content, attachment_url, attachment_kind, attachment_name, attachment_preview, created_at, likes_count, comments_count, share_count';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Escapes LIKE wildcards so a search for "50%" matches literally.
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`);
+
 const Explore = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const searchQuery = (searchParams.get('q') ?? '').trim();
+  const sharedPostParam = searchParams.get('post');
+  const sharedPostId = sharedPostParam && UUID_PATTERN.test(sharedPostParam) ? sharedPostParam : null;
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [visibleCount, setVisibleCount] = useState(5);
+  // Number of feed rows fetched so far (excludes a pinned shared post), used as the next page offset.
+  const [feedOffset, setFeedOffset] = useState(0);
+  const pendingLikes = useRef(new Set<string>());
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [donateSubmitting, setDonateSubmitting] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -50,12 +73,10 @@ const Explore = () => {
   const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
   const [donateModalPostId, setDonateModalPostId] = useState<string | null>(null);
   const [donateAmount, setDonateAmount] = useState('');
-  const [donateName, setDonateName] = useState('');
   const [donateMessage, setDonateMessage] = useState('');
   const [thankYouInfo, setThankYouInfo] = useState<{ name: string; amount: string } | null>(null);
 
-  const visiblePosts = posts.slice(0, visibleCount);
-  const videoPosts = visiblePosts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
+  const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
 
   const fetchProfiles = async (userIds: (string | null | undefined)[]) => {
     const idsToFetch = Array.from(
@@ -76,30 +97,6 @@ const Explore = () => {
     });
   };
 
-  const notifyPostOwner = async (postId: string, type: 'like' | 'comment', message?: string) => {
-    const actingUser = user;
-    if (!actingUser) return;
-    const post = posts.find((p) => p.id === postId);
-    const ownerId = post?.user_id;
-    if (!ownerId || ownerId === actingUser.id) return;
-    const actorName =
-      profileMap[actingUser.id]?.full_name || actingUser.email || 'Athlyft member';
-    const title = type === 'like' ? 'Your post was liked' : 'New comment on your post';
-    const body =
-      type === 'like'
-        ? `${actorName} liked your post.`
-        : `${actorName} commented: ${message || 'New comment'}`;
-    try {
-      await supabase.from('notifications').insert({
-        user_id: ownerId,
-        title,
-        body: body.slice(0, 180),
-      });
-    } catch (err) {
-      // Best-effort: ignore notification errors
-    }
-  };
-
   useEffect(() => {
     const loadInitial = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -110,39 +107,84 @@ const Explore = () => {
       }
     };
     loadInitial();
-  }, []);
+    // Reload when the search (?q=) or shared post (?post=) in the URL changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, sharedPostId]);
+
+  // Escape closes the top-most open modal.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (thankYouInfo) setThankYouInfo(null);
+      else if (donateModalPostId) setDonateModalPostId(null);
+      else if (commentModalPostId) setCommentModalPostId(null);
+      else if (imageModalUrl) setImageModalUrl(null);
+      else if (showVideoModal) setShowVideoModal(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [thankYouInfo, donateModalPostId, commentModalPostId, imageModalUrl, showVideoModal]);
+
+  const fetchPostsPage = async (offset: number) => {
+    let query = supabase.from('posts').select(POST_COLUMNS);
+    if (searchQuery) query = query.ilike('content', `%${escapeLike(searchQuery)}%`);
+    return query.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1);
+  };
+
+  const fetchLikedIds = async (userId: string | null | undefined, postIds: string[]) => {
+    if (!userId || postIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', userId)
+      .in('post_id', postIds);
+    if (error) {
+      console.warn('Could not load likes:', error.message);
+      return [];
+    }
+    return (data || []).map((row) => row.post_id as string);
+  };
 
   const loadPosts = async (userId?: string | null) => {
     setLoadingPosts(true);
-    const { data, error } = await supabase
-      .from('posts')
-      .select('id, user_id, content, attachment_url, attachment_kind, attachment_preview, created_at, likes_count, comments_count, share_count')
-      .order('created_at', { ascending: false })
-      .limit(65);
+    const { data, error } = await fetchPostsPage(0);
     if (!error && data) {
-      const fetched = data as FeedPost[];
-      setPosts(fetched);
-      setVisibleCount(Math.min(5, fetched.length || 0));
-      await fetchProfiles(fetched.map((p) => p.user_id));
-      if (userId && fetched.length > 0) {
-        const ids = fetched.map((p) => p.id);
-        const { data: likedRows } = await supabase
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', userId)
-          .in('post_id', ids);
-        setLiked((likedRows || []).map((row) => row.post_id));
-      } else {
-        setLiked([]);
+      let fetched = data as FeedPost[];
+      setFeedOffset(fetched.length);
+      setHasMorePosts(fetched.length === PAGE_SIZE);
+      // A shared link (?post=<id>) pins that post at the top of the feed.
+      if (sharedPostId) {
+        const { data: shared } = await supabase.from('posts').select(POST_COLUMNS).eq('id', sharedPostId).maybeSingle();
+        if (shared) {
+          fetched = [shared as FeedPost, ...fetched.filter((p) => p.id !== sharedPostId)];
+        } else {
+          toast({ title: 'Post not found', description: 'It may have been deleted.' });
+        }
       }
+      setPosts(fetched);
+      await fetchProfiles(fetched.map((p) => p.user_id));
+      setLiked(await fetchLikedIds(userId, fetched.map((p) => p.id)));
     } else if (error) {
       toast({ title: 'Could not load posts', description: error.message, variant: 'destructive' });
     }
     setLoadingPosts(false);
   };
 
-  const showMorePosts = () => {
-    setVisibleCount((prev) => Math.min(prev + 5, posts.length));
+  const showMorePosts = async () => {
+    setLoadingMore(true);
+    const { data, error } = await fetchPostsPage(feedOffset);
+    if (error) {
+      toast({ title: 'Could not load more posts', description: error.message, variant: 'destructive' });
+    } else if (data) {
+      const fetched = data as FeedPost[];
+      setFeedOffset((prev) => prev + fetched.length);
+      setPosts((prev) => [...prev, ...fetched.filter((p) => !prev.some((existing) => existing.id === p.id))]);
+      setHasMorePosts(fetched.length === PAGE_SIZE);
+      await fetchProfiles(fetched.map((p) => p.user_id));
+      const newlyLiked = await fetchLikedIds(user?.id, fetched.map((p) => p.id));
+      setLiked((prev) => Array.from(new Set([...prev, ...newlyLiked])));
+    }
+    setLoadingMore(false);
   };
 
   const toggleLike = async (postId: string) => {
@@ -150,8 +192,19 @@ const Explore = () => {
       toast({ title: 'Login required', description: 'Please log in to like posts.', variant: 'destructive' });
       return;
     }
+    // Ignore clicks while this post's like/unlike request is in flight, so requests can't cross.
+    if (pendingLikes.current.has(postId)) return;
+    pendingLikes.current.add(postId);
+    try {
+      await applyLikeToggle(postId);
+    } finally {
+      pendingLikes.current.delete(postId);
+    }
+  };
+
+  const applyLikeToggle = async (postId: string) => {
+    if (!user) return;
     const isLiked = liked.includes(postId);
-    const currentLikes = posts.find((p) => p.id === postId)?.likes_count ?? 0;
     const updateCounts = (delta: number) =>
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, likes_count: (p.likes_count ?? 0) + delta } : p))
@@ -169,26 +222,19 @@ const Explore = () => {
         setLiked((prev) => [...prev, postId]);
         updateCounts(1);
         toast({ title: 'Could not remove like', description: error.message, variant: 'destructive' });
-      } else {
-        await supabase
-          .from('posts')
-          .update({ likes_count: Math.max(0, currentLikes - 1) })
-          .eq('id', postId);
       }
     } else {
       setLiked((prev) => [...prev, postId]);
       updateCounts(1);
-      const { error } = await supabase.from('post_likes').upsert({ post_id: postId, user_id: user.id });
-      if (error) {
+      // The database updates likes_count and notifies the post owner.
+      const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
+      // 23505 = already liked (e.g. from another tab); keep the liked state.
+      if (error && error.code !== '23505') {
         setLiked((prev) => prev.filter((id) => id !== postId));
         updateCounts(-1);
         toast({ title: 'Could not like post', description: error.message, variant: 'destructive' });
-      } else {
-        await supabase
-          .from('posts')
-          .update({ likes_count: currentLikes + 1 })
-          .eq('id', postId);
-        await notifyPostOwner(postId, 'like');
+      } else if (error) {
+        updateCounts(-1);
       }
     }
   };
@@ -225,47 +271,49 @@ const Explore = () => {
       toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
       return;
     }
-    const defaultName =
-      profileMap[user.id || '']?.full_name || user.email || 'Supporter';
     setDonateModalPostId(postId);
     setDonateAmount('');
     setDonateMessage('');
-    setDonateName(defaultName);
   };
 
   const submitDonation = async () => {
-    if (!donateModalPostId) return;
+    if (!donateModalPostId || donateSubmitting) return;
     if (!user) {
       toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
       return;
     }
-    const numericAmount = parseFloat(donateAmount);
-    if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-      toast({ title: 'Enter an amount', description: 'Please enter a valid amount greater than 0.', variant: 'destructive' });
+    const numericAmount = Math.round(parseFloat(donateAmount) * 100) / 100;
+    if (Number.isNaN(numericAmount) || numericAmount < 1 || numericAmount > MAX_DONATION) {
+      toast({
+        title: 'Enter an amount',
+        description: `Please enter an amount between ₹1 and ₹${MAX_DONATION.toLocaleString('en-IN')}.`,
+        variant: 'destructive',
+      });
       return;
     }
-    const finalName = donateName.trim() || profileMap[user.id || '']?.full_name || user.email || 'Supporter';
-    try {
-      await supabase.from('donations').insert({
-        user_id: user.id,
-        beneficiary_name: null,
-        post_reference: donateModalPostId,
-        post_id: donateModalPostId,
-        cause_id: null,
-        cause_title: 'Post donation',
-        cause_image: null,
-        amount: numericAmount,
-        currency: 'INR',
-        frequency: 'one-time',
-        payment_method: 'app',
-        message: donateMessage?.trim() || null,
-        dedication: null,
-        country: null,
-        cover_fees: false,
-        allow_updates: false,
-      });
-    } catch (err: any) {
-      toast({ title: 'Could not save donation', description: err.message || 'Try again.', variant: 'destructive' });
+    const finalName = profileMap[user.id || '']?.full_name || user.email || 'Supporter';
+    setDonateSubmitting(true);
+    const { error } = await supabase.from('donations').insert({
+      user_id: user.id,
+      beneficiary_name: null,
+      post_reference: donateModalPostId,
+      post_id: donateModalPostId,
+      cause_id: null,
+      cause_title: 'Post donation',
+      cause_image: null,
+      amount: numericAmount,
+      currency: 'INR',
+      frequency: 'one-time',
+      payment_method: 'app',
+      message: donateMessage.trim().slice(0, MAX_DONATION_MESSAGE) || null,
+      dedication: null,
+      country: null,
+      cover_fees: false,
+      allow_updates: false,
+    });
+    setDonateSubmitting(false);
+    if (error) {
+      toast({ title: 'Could not save donation', description: error.message || 'Try again.', variant: 'destructive' });
       return;
     }
 
@@ -292,16 +340,22 @@ const Explore = () => {
   };
 
   const submitComment = async () => {
-    if (!commentModalPostId || !commentDraft.trim()) return;
+    if (!commentModalPostId || !commentDraft.trim() || commentSubmitting) return;
     if (!user) {
       toast({ title: 'Login required', description: 'Please log in to comment.', variant: 'destructive' });
       return;
     }
+    if (commentDraft.trim().length > MAX_COMMENT_CHARS) {
+      toast({ title: 'Comment too long', description: `Keep it under ${MAX_COMMENT_CHARS} characters.`, variant: 'destructive' });
+      return;
+    }
+    setCommentSubmitting(true);
     const { data, error } = await supabase
       .from('post_comments')
       .insert({ post_id: commentModalPostId, content: commentDraft.trim(), user_id: user.id })
       .select()
       .single();
+    setCommentSubmitting(false);
     if (error) {
       toast({ title: 'Could not post comment', description: error.message, variant: 'destructive' });
       return;
@@ -316,12 +370,8 @@ const Explore = () => {
         p.id === commentModalPostId ? { ...p, comments_count: (p.comments_count ?? 0) + 1 } : p
       )
     );
-    await supabase
-      .from('posts')
-      .update({ comments_count: (posts.find((p) => p.id === commentModalPostId)?.comments_count ?? 0) + 1 })
-      .eq('id', commentModalPostId);
+    // The database updates comments_count and notifies the post owner.
     await fetchProfiles([user.id]);
-    await notifyPostOwner(commentModalPostId, 'comment', commentDraft.trim());
     setCommentDraft('');
   };
 
@@ -349,7 +399,8 @@ const Explore = () => {
 
     if (!shared) {
       try {
-        await navigator.clipboard?.writeText(shareUrl);
+        if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(shareUrl);
         toast({ title: 'Link copied', description: 'Share it with your friends.' });
         shared = true;
       } catch {
@@ -359,12 +410,13 @@ const Explore = () => {
 
     if (!shared) return;
 
-    const nextCount = (post.share_count ?? 0) + 1;
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, share_count: nextCount } : p)));
-    const { error } = await supabase.from('posts').update({ share_count: nextCount }).eq('id', postId);
+    const { data: shareCount, error } = await supabase.rpc('increment_share', { p_post_id: postId });
     if (error) {
       toast({ title: 'Share failed', description: error.message, variant: 'destructive' });
     } else {
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, share_count: (shareCount as number | null) ?? p.share_count } : p))
+      );
       toast({ title: 'Post shared' });
     }
   };
@@ -372,7 +424,12 @@ const Explore = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Explore Feed</h1>
+        <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Explore Feed'}</h1>
+        {searchQuery ? (
+          <Link to="/explore" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
+        ) : (
+          <div className="mb-6" />
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {loadingPosts && (
@@ -381,10 +438,17 @@ const Explore = () => {
             </div>
           )}
           {!loadingPosts && posts.length === 0 && (
-            <p className="text-sm text-muted-foreground">No posts yet. Create one to get started.</p>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery ? 'No posts match your search.' : 'No posts yet. Create one to get started.'}
+            </p>
           )}
-          {!loadingPosts && visiblePosts.map((post) => (
-            <div key={post.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+          {!loadingPosts && posts.map((post) => (
+            <div
+              key={post.id}
+              className={`card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow ${
+                post.id === sharedPostId ? 'ring-2 ring-primary' : ''
+              }`}
+            >
               <div className="card-body p-4">
                 {/* Author Header */}
                 <div className="flex items-center justify-start mb-3">
@@ -436,6 +500,18 @@ const Explore = () => {
                   </button>
                 )}
 
+                {(post.attachment_kind === 'file' && post.attachment_url) && (
+                  <a
+                    href={post.attachment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-base-300 px-3 py-2 text-sm hover:border-primary"
+                  >
+                    <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                    <span className="truncate">{post.attachment_name || 'Open attachment'}</span>
+                  </a>
+                )}
+
                 {/* Post Content */}
                 <div className="space-y-2 mt-3">
                   <p className="text-sm whitespace-pre-line">{post.content}</p>
@@ -445,6 +521,7 @@ const Explore = () => {
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <button
                     onClick={() => toggleLike(post.id)}
+                    aria-label={liked.includes(post.id) ? 'Unlike' : 'Like'}
                     className={`btn btn-ghost btn-sm gap-2 ${
                       liked.includes(post.id) ? 'text-error' : ''
                     }`}
@@ -457,12 +534,12 @@ const Explore = () => {
                     <span>{post.likes_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)}>
+                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => openCommentModal(post.id)} aria-label="Comments">
                     <MessageCircle className="h-5 w-5" />
                     <span>{post.comments_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => sharePost(post.id)}>
+                  <button className="btn btn-ghost btn-sm gap-2" onClick={() => sharePost(post.id)} aria-label="Share">
                     <Share2 className="h-5 w-5" />
                     <span>{post.share_count ?? 0}</span>
                   </button>
@@ -477,10 +554,10 @@ const Explore = () => {
           ))}
         </div>
 
-        {!loadingPosts && visibleCount < posts.length && (
+        {!loadingPosts && hasMorePosts && (
           <div className="flex justify-center mt-6">
-            <button className="btn btn-outline" onClick={showMorePosts}>
-              Show more
+            <button className="btn btn-outline" onClick={showMorePosts} disabled={loadingMore}>
+              {loadingMore ? 'Loading...' : 'Show more'}
             </button>
           </div>
         )}
@@ -490,11 +567,15 @@ const Explore = () => {
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onWheel={handleVideoWheel}
+          onClick={(e) => e.target === e.currentTarget && closeVideoModal()}
+          role="dialog"
+          aria-modal="true"
         >
           <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-5xl">
             <button
               onClick={closeVideoModal}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -525,10 +606,26 @@ const Explore = () => {
                     Next <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <button className="btn btn-primary btn-sm text-base-900 p-2">Like</button>
-                  <button className="btn btn-secondary btn-sm text-base-900 p-2">Comment</button>
-                  <button className="btn btn-accent btn-sm text-base-900 p-2">Donate</button>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    className="btn btn-primary btn-sm text-base-900 p-2"
+                    onClick={() => toggleLike(videoPosts[activeVideoIndex].id)}
+                  >
+                    <Heart className={`h-4 w-4 ${liked.includes(videoPosts[activeVideoIndex].id) ? 'fill-current' : ''}`} />
+                    {liked.includes(videoPosts[activeVideoIndex].id) ? 'Liked' : 'Like'} ({videoPosts[activeVideoIndex].likes_count ?? 0})
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm text-base-900 p-2"
+                    onClick={() => openCommentModal(videoPosts[activeVideoIndex].id)}
+                  >
+                    Comment ({videoPosts[activeVideoIndex].comments_count ?? 0})
+                  </button>
+                  <button
+                    className="btn btn-accent btn-sm text-base-900 p-2"
+                    onClick={() => openDonateModal(videoPosts[activeVideoIndex].id)}
+                  >
+                    Donate
+                  </button>
                 </div>
               </div>
             </div>
@@ -537,11 +634,17 @@ const Explore = () => {
       )}
 
       {imageModalUrl && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && closeImageModal()}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl">
             <button
               onClick={closeImageModal}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -551,11 +654,17 @@ const Explore = () => {
       )}
 
       {commentModalPostId !== null && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setCommentModalPostId(null)}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
             <button
               onClick={() => setCommentModalPostId(null)}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -600,12 +709,19 @@ const Explore = () => {
                   className="textarea textarea-bordered w-full"
                   rows={3}
                   placeholder="Add your comment..."
+                  maxLength={MAX_COMMENT_CHARS}
                   value={commentDraft}
                   onChange={(e) => setCommentDraft(e.target.value)}
                 />
                 <div className="flex justify-end gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={() => setCommentModalPostId(null)}>Close</button>
-                  <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={submitComment}>Post Comment</button>
+                  <button
+                    className="btn btn-primary btn-sm text-base-900 p-2"
+                    onClick={submitComment}
+                    disabled={commentSubmitting || !commentDraft.trim()}
+                  >
+                    {commentSubmitting ? 'Posting...' : 'Post Comment'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -614,11 +730,17 @@ const Explore = () => {
       )}
 
       {donateModalPostId && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setDonateModalPostId(null)}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
             <button
               onClick={() => setDonateModalPostId(null)}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -646,22 +768,12 @@ const Explore = () => {
                   <input
                     type="number"
                     min="1"
+                    max={MAX_DONATION}
+                    step="0.01"
                     className="input input-bordered w-full"
                     placeholder="Enter amount"
                     value={donateAmount}
                     onChange={(e) => setDonateAmount(e.target.value)}
-                  />
-                </label>
-                <label className="form-control w-full">
-                  <div className="label">
-                    <span className="label-text">Name</span>
-                    <span className="label-text-alt text-muted-foreground">Auto-filled from your profile</span>
-                  </div>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={donateName}
-                    onChange={(e) => setDonateName(e.target.value)}
                   />
                 </label>
                 <label className="form-control w-full">
@@ -672,6 +784,7 @@ const Explore = () => {
                     className="textarea textarea-bordered w-full"
                     rows={3}
                     placeholder="Share a note with your donation"
+                    maxLength={MAX_DONATION_MESSAGE}
                     value={donateMessage}
                     onChange={(e) => setDonateMessage(e.target.value)}
                   />
@@ -679,8 +792,12 @@ const Explore = () => {
               </div>
               <div className="flex justify-end gap-2">
                 <button className="btn btn-ghost btn-sm" onClick={() => setDonateModalPostId(null)}>Cancel</button>
-                <button className="btn btn-primary btn-sm text-base-900 p-2" onClick={submitDonation}>
-                  Donate
+                <button
+                  className="btn btn-primary btn-sm text-base-900 p-2"
+                  onClick={submitDonation}
+                  disabled={donateSubmitting}
+                >
+                  {donateSubmitting ? 'Saving...' : 'Donate'}
                 </button>
               </div>
             </div>
@@ -689,11 +806,17 @@ const Explore = () => {
       )}
 
       {thankYouInfo && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setThankYouInfo(null)}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
             <button
               onClick={() => setThankYouInfo(null)}
               className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -705,7 +828,7 @@ const Explore = () => {
               </div>
               <h3 className="text-2xl font-semibold">Thank you, {thankYouInfo.name}!</h3>
               <p className="text-sm text-muted-foreground">
-                We received your ₹{thankYouInfo.amount} donation. Your support helps this creator thrive.
+                We recorded your ₹{thankYouInfo.amount} pledge. Online payments are not connected yet, so no money has been charged.
               </p>
               <div className="bg-base-200 rounded-xl p-3 text-sm text-base-content border border-base-300">
                 <p className="font-semibold">Message</p>

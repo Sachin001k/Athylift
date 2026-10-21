@@ -4,8 +4,9 @@ import { Camera, Save, Youtube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import { PROFILE_BUCKET, removeStoredFile, storagePathFromPublicUrl, userFilePath } from '@/lib/storage';
 
-const PROFILE_BUCKET = 'profile-media';
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_COVER = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200';
 const DEFAULT_AVATAR = 'https://api.dicebear.com/7.x/avataaars/svg?seed=athlete';
 
@@ -49,9 +50,11 @@ const Profile = () => {
         .from('profiles')
         .select('*')
         .eq('id', userData.user.id)
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
+      if (error) {
+        toast({ title: 'Could not load profile', description: error.message, variant: 'destructive' });
+      } else if (data) {
         const record = data as ProfileRecord;
         setName(record.full_name || '');
         setBio(record.bio || '');
@@ -60,14 +63,17 @@ const Profile = () => {
         setCoverImage(record.cover_url || DEFAULT_COVER);
         setProfileImage(record.avatar_url || DEFAULT_AVATAR);
       }
-      const { data: postImages } = await supabase
+      const { data: postImages, error: galleryError } = await supabase
         .from('posts')
         .select('attachment_url, attachment_kind')
         .eq('user_id', userData.user.id)
         .eq('attachment_kind', 'image')
         .not('attachment_url', 'is', null)
+        .order('created_at', { ascending: false })
         .limit(30);
-      if (postImages) {
+      if (galleryError) {
+        console.warn('Could not load gallery:', galleryError.message);
+      } else if (postImages) {
         setGallery(postImages.map((p) => p.attachment_url!).filter(Boolean));
       }
       setLoadingProfile(false);
@@ -88,45 +94,49 @@ const Profile = () => {
     return true;
   };
 
-  const persistProfile = async (updates: Partial<ProfileRecord>) => {
-    if (!requireUser()) return;
+  // Saves only the fields passed in, so untouched fields (e.g. default images) are never written.
+  const persistProfile = async (updates: Partial<Omit<ProfileRecord, 'email'>>) => {
+    if (!requireUser()) return false;
     setSaving(true);
-    const { error } = await supabase.from('profiles').upsert({
-      id: user!.id,
-      full_name: name,
-      bio,
-      phone,
-      youtube_url: youtubeUrl,
-      avatar_url: profileImage,
-      cover_url: coverImage,
-      email: user!.email,
-      ...updates,
-    });
+    let { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user!.id)
+      .select('id');
 
+    // The database creates the row at signup; this covers accounts created before that trigger existed.
+    if (!error && (!data || data.length === 0)) {
+      ({ data, error } = await supabase.from('profiles').insert({ id: user!.id, ...updates }).select('id'));
+    }
+
+    setSaving(false);
     if (error) {
       toast({
         title: 'Save failed',
         description: error.message,
         variant: 'destructive',
       });
-      setSaving(false);
-      return;
+      return false;
     }
 
     toast({
       title: 'Saved!',
       description: 'Your profile has been updated',
     });
-    setSaving(false);
+    return true;
   };
 
   const uploadAndSave = async (file: File, keyPrefix: 'cover' | 'avatar') => {
     if (!requireUser()) return;
+    if (!file.type.startsWith('image/') || file.size > MAX_IMAGE_BYTES) {
+      toast({ title: 'Invalid image', description: 'Please choose an image up to 5 MB.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
-    const path = `${user!.id}/${keyPrefix}-${Date.now()}-${file.name}`;
+    const path = userFilePath(user!.id, `${keyPrefix}-${file.name}`);
     const { error: uploadError } = await supabase.storage
       .from(PROFILE_BUCKET)
-      .upload(path, file, { upsert: true });
+      .upload(path, file, { contentType: file.type });
 
     if (uploadError) {
       toast({
@@ -140,19 +150,24 @@ const Profile = () => {
 
     const { data } = supabase.storage.from(PROFILE_BUCKET).getPublicUrl(path);
     const publicUrl = data.publicUrl;
+    const previousUrl = keyPrefix === 'cover' ? coverImage : profileImage;
 
+    const saved = await persistProfile(keyPrefix === 'cover' ? { cover_url: publicUrl } : { avatar_url: publicUrl });
+    if (!saved) {
+      await removeStoredFile(PROFILE_BUCKET, path);
+      return;
+    }
     if (keyPrefix === 'cover') {
       setCoverImage(publicUrl);
-      await persistProfile({ cover_url: publicUrl });
     } else {
       setProfileImage(publicUrl);
-      await persistProfile({ avatar_url: publicUrl });
     }
-    setSaving(false);
+    await removeStoredFile(PROFILE_BUCKET, storagePathFromPublicUrl(PROFILE_BUCKET, previousUrl));
   };
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       uploadAndSave(file, 'cover');
     }
@@ -160,26 +175,24 @@ const Profile = () => {
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       uploadAndSave(file, 'avatar');
     }
   };
 
   const extractYouTubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|live\/|watch\?v=|&v=)([^#&?/]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   };
 
-  const handleAddVideo = () => {
+  const handleAddVideo = async () => {
     const videoId = extractYouTubeId(youtubeInput);
     if (videoId) {
+      const saved = await persistProfile({ youtube_url: youtubeInput });
+      if (!saved) return;
       setYoutubeUrl(youtubeInput);
-      persistProfile({ youtube_url: youtubeInput });
-      toast({
-        title: 'Video added!',
-        description: 'YouTube link saved to your profile',
-      });
       setYoutubeInput('');
     } else {
       toast({
@@ -233,6 +246,7 @@ const Profile = () => {
                   accept="image/*"
                   className="hidden"
                   onChange={handleCoverChange}
+                  disabled={saving}
                 />
                 <div className="text-base-900 p-2 text-center">
                   <Camera className="h-12 w-12 mx-auto mb-2" />
@@ -252,6 +266,7 @@ const Profile = () => {
                     accept="image/*"
                     className="hidden"
                     onChange={handleProfileChange}
+                    disabled={saving}
                   />
                   <Camera className="h-8 w-8 text-base-900 p-2" />
                 </label>
@@ -270,6 +285,7 @@ const Profile = () => {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  maxLength={120}
                   className="input input-bordered flex-1"
                 />
                 <button
@@ -291,6 +307,7 @@ const Profile = () => {
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
+                  maxLength={2000}
                   className="textarea textarea-bordered flex-1"
                   rows={3}
                 />
@@ -314,6 +331,7 @@ const Profile = () => {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  maxLength={32}
                   className="input input-bordered flex-1"
                 />
                 <button
@@ -368,6 +386,7 @@ const Profile = () => {
                   placeholder="Enter YouTube URL"
                   value={youtubeInput}
                   onChange={(e) => setYoutubeInput(e.target.value)}
+                  maxLength={500}
                   className="input input-bordered flex-1"
                 />
                 <button
@@ -421,6 +440,7 @@ const Profile = () => {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                  maxLength={32}
                     className="input input-bordered flex-1 pl-2"
                   />
                   <button

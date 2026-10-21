@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -15,22 +16,25 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const fromState = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/explore';
 
   useEffect(() => {
     const redirectIfLoggedIn = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        navigate('/explore', { replace: true });
+        navigate(redirectTo, { replace: true });
       }
     };
     redirectIfLoggedIn();
-  }, [navigate]);
+  }, [navigate, redirectTo]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 
     if (error) {
       toast({
@@ -48,7 +52,7 @@ const Login = () => {
     });
 
     setLoading(false);
-    navigate('/explore');
+    navigate(redirectTo, { replace: true });
   };
 
   return (
@@ -60,7 +64,7 @@ const Login = () => {
         backgroundPosition: 'center',
       }}
     >
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="flex items-center justify-center p-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 max-w-5xl w-full bg-base-100 rounded-3xl shadow-2xl overflow-hidden border border-base-300/70">
           {/* Left Side - Hero with image */}
@@ -75,7 +79,7 @@ const Login = () => {
             <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 ${isDark ? 'text-white' : 'text-base-900'}`}>
               <h1 className="text-5xl font-brand tracking-wide mb-6">Welcome Back!</h1>
               <p className={`text-xl mb-8 font-serif ${mutedTextClass}`}>
-                Rejoin the Athlyt community to ask freely, support others, and stay connected in a safe space.
+                Rejoin the Athlyft community to ask freely, support others, and stay connected in a safe space.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -104,7 +108,7 @@ const Login = () => {
           <div className="p-8 lg:p-12 flex items-center bg-base-100">
             <div className="w-full max-w-md mx-auto">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Login to Athlyt</h2>
+                <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Login to Athlyft</h2>
                 <p className={`${mutedTextClass} font-serif`}>
                   Enter your credentials to access your account
                 </p>
@@ -138,16 +142,11 @@ const Login = () => {
                     required
                   />
                   <label className="label">
-                    <a href="#" className="label-text-alt link link-primary">
+                    <Link to="/forgot-password" className="label-text-alt link link-primary">
                       Forgot password?
-                    </a>
+                    </Link>
                   </label>
                 </div>
-
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" />
-                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>Keep me signed in</span>
-                </label>
 
                 <button
                   type="submit"

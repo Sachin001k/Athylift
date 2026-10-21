@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 
@@ -10,6 +10,7 @@ type ProtectedRouteProps = {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     const loadSession = async () => {
@@ -37,7 +38,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />;
+    // Login sends the user back here afterwards.
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return children;

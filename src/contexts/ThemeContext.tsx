@@ -7,23 +7,34 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
 }
 
+const THEMES: Theme[] = ['light', 'dark', 'sport'];
+
+const readSavedTheme = (): Theme => {
+  try {
+    const saved = localStorage.getItem('athlyft-theme') as Theme | null;
+    return saved && THEMES.includes(saved) ? saved : 'light';
+  } catch {
+    return 'light';
+  }
+};
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('light');
+  // index.html sets data-theme from localStorage before first paint; start from that value.
+  const [theme, setTheme] = useState<Theme>(() => readSavedTheme());
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('athlyft-theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
-    localStorage.setItem('athlyft-theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem('athlyft-theme', newTheme);
+    } catch {
+      // Storage can be unavailable (private mode); the theme still applies for this visit.
+    }
   };
 
   return (

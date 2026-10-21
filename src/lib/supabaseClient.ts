@@ -4,26 +4,30 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 // Provide a safe fallback so the UI doesn't crash when env vars are missing.
+// Every query chain (e.g. .select().eq().order()) resolves to { data: null, error }.
 const createStubClient = () => {
   const error = new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-  const builder: any = {
-    select: async () => ({ data: null, error }),
-    insert: async () => ({ data: null, error }),
-    update: async () => ({ data: null, error }),
-    delete: async () => ({ data: null, error }),
-    upsert: async () => ({ data: null, error }),
-    eq: () => builder,
-    in: () => builder,
-    order: () => builder,
-    limit: () => builder,
-    single: async () => ({ data: null, error }),
-  };
+  const result = { data: null, error, count: null };
+
+  const builder: any = new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        if (prop === 'then') {
+          return (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve);
+        }
+        return () => builder;
+      },
+    }
+  );
 
   return {
     auth: {
       getUser: async () => ({ data: { user: null }, error }),
-      signInWithPassword: async () => ({ data: null, error }),
-      signUp: async () => ({ data: null, error }),
+      getSession: async () => ({ data: { session: null }, error }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: { user: null, session: null }, error }),
+      signUp: async () => ({ data: { user: null, session: null }, error }),
       signOut: async () => ({ error }),
     },
     from: () => builder,
@@ -32,9 +36,10 @@ const createStubClient = () => {
         upload: async () => ({ data: null, error }),
         remove: async () => ({ data: null, error }),
         download: async () => ({ data: null, error }),
+        getPublicUrl: () => ({ data: { publicUrl: '' } }),
       }),
     },
-    rpc: async () => ({ data: null, error }),
+    rpc: () => builder,
   } as any;
 };
 

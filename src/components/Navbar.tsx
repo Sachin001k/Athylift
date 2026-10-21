@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { FormEvent, useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,8 +14,18 @@ import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
-  onMenuClick: () => void;
+  // Pages with a sidebar (Layout) toggle it here; other pages get a built-in mobile menu.
+  onMenuClick?: () => void;
 }
+
+const PAGE_LINKS = [
+  { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
+  { to: '/terms', label: 'Terms' },
+  { to: '/privacy', label: 'Privacy' },
+  { to: '/faq', label: 'FAQ' },
+  { to: '/contact', label: 'Contact' },
+];
 
 type NotificationItem = {
   id: string;
@@ -34,6 +44,18 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    navigate(query ? `/explore?q=${encodeURIComponent(query)}` : '/explore');
+  };
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -49,18 +71,20 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     const { data } = await supabase.auth.getUser();
     setUser(data.user ?? null);
     if (data.user) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('avatar_url')
         .eq('id', data.user.id)
-        .single();
+        .maybeSingle();
+      if (profileError) console.warn('Could not load profile:', profileError.message);
       setProfileAvatar(profile?.avatar_url || null);
 
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', data.user.id)
         .eq('is_read', false);
+      if (countError) console.warn('Could not load notifications:', countError.message);
       setNotificationCount(count ?? 0);
     } else {
       setNotificationCount(0);
@@ -79,7 +103,11 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({ title: 'Could not log out', description: error.message, variant: 'destructive' });
+      return;
+    }
     setUser(null);
     setNotificationCount(0);
     setProfileAvatar(null);
@@ -108,13 +136,17 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     setNotificationCount(unread);
 
     if (unread > 0) {
-      await supabase
+      const { error: markError } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', user.id)
         .eq('is_read', false);
-      setNotificationCount(0);
-      setNotifications(items.map((n) => ({ ...n, is_read: true })));
+      if (markError) {
+        console.warn('Could not mark notifications as read:', markError.message);
+      } else {
+        setNotificationCount(0);
+        setNotifications(items.map((n) => ({ ...n, is_read: true })));
+      }
     }
     setLoadingNotifications(false);
   };
@@ -123,13 +155,35 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     <header className="sticky top-0 z-50 w-full border-b bg-base-100/90 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={onMenuClick}
-            className="btn btn-ghost btn-sm lg:hidden text-base-content"
-            aria-label="Toggle menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {onMenuClick ? (
+            <button
+              onClick={onMenuClick}
+              className="btn btn-ghost btn-sm lg:hidden text-base-content"
+              aria-label="Toggle menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="btn btn-ghost btn-sm lg:hidden text-base-content" aria-label="Open menu">
+                  <Menu className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="bg-base-100 text-base-content border-base-300">
+                {user && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/explore" className="text-base-content font-semibold">Feed</Link>
+                  </DropdownMenuItem>
+                )}
+                {PAGE_LINKS.map((item) => (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link to={item.to} className="text-base-content">{item.label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-base-900 p-2 tracking-wide">A</span>
@@ -139,23 +193,27 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
         </div>
 
         <nav className="hidden lg:flex items-center gap-6 font-medium text-base-content">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-          <Link to="/about" className="hover:text-primary transition-colors">About</Link>
-          <Link to="/terms" className="hover:text-primary transition-colors">Terms</Link>
-          <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
-          <Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link>
-          <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
+          {user && (
+            <Link to="/explore" className="text-primary font-semibold hover:opacity-80 transition-opacity">Feed</Link>
+          )}
+          {PAGE_LINKS.map((item) => (
+            <Link key={item.to} to={item.to} className="hover:text-primary transition-colors">{item.label}</Link>
+          ))}
         </nav>
 
         <div className="hidden flex-1 max-w-md mx-8 md:block">
-          <div className="relative">
+          <form className="relative" role="search" onSubmit={handleSearch}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search the Athlyt community"
+              placeholder="Search posts in the Athlyft community"
+              aria-label="Search posts"
               className="input input-bordered w-full pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              maxLength={100}
             />
-          </div>
+          </form>
         </div>
 
         <div className="flex items-center gap-2">
