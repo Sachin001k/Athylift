@@ -162,8 +162,8 @@ const Contact = () => {
                       <p className={`${mutedTextClass} mb-2`}>
                         Our team typically responds within 24 hours
                       </p>
-                      <a href="mailto:support@athlyft.com" className="link link-primary">
-                        support@athlyft.com
+                      <a href="mailto:support@athylift.com" className="link link-primary">
+                        support@athylift.com
                       </a>
                     </div>
                   </div>
@@ -176,7 +176,7 @@ const Contact = () => {
                   <p className="mb-4">
                     Interested in partnerships or sponsorships? Reach out to our business team.
                   </p>
-                  <a href="mailto:business@athlyft.com" className="btn bg-base-100 text-primary hover:bg-base-100/90 border-none">
+                  <a href="mailto:business@athylift.com" className="btn bg-base-100 text-primary hover:bg-base-100/90 border-none">
                     Contact Business Team
                   </a>
                 </div>

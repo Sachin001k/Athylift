@@ -201,10 +201,10 @@ create table if not exists public.contact_messages (
 -- ---------------------------------------------------------------------------
 create or replace function public.actor_display_name(p_user_id uuid)
 returns text language sql stable security definer set search_path = public as $$
-  select coalesce(nullif(trim(full_name), ''), 'An Athlyft member')
+  select coalesce(nullif(trim(full_name), ''), 'An Athylift member')
     from public.profiles where id = p_user_id
   union all
-  select 'An Athlyft member'
+  select 'An Athylift member'
   limit 1;
 $$;
 

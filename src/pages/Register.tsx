@@ -92,7 +92,7 @@ const Register = () => {
 
     toast({
       title: 'Account created!',
-      description: 'Welcome to Athlyft community',
+      description: 'Welcome to Athylift community',
     });
 
     navigate(redirectTo, { replace: true });
@@ -119,7 +119,7 @@ const Register = () => {
             }}
           >
             <div className={`h-full w-full p-12 flex flex-col justify-center text-white`}>
-              <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athlyft</h2>
+              <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athylift</h2>
               <p className={`text-lg font-serif mb-6 ${mutedTextClass}`}>
                 Build your profile, share your journey, and connect with a trusted parenting community.
               </p>

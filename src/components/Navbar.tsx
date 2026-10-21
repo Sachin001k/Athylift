@@ -155,7 +155,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
-            <span className="text-2xl font-brand text-primary tracking-wide">Athlyft</span>
+            <span className="text-2xl font-brand text-primary tracking-wide">Athylift</span>
           </Link>
         </div>
 
@@ -173,7 +173,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search posts in the Athlyft community"
+              placeholder="Search posts in the Athylift community"
               aria-label="Search posts"
               className="input input-bordered w-full pl-10"
               value={searchQuery}

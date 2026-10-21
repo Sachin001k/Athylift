@@ -79,7 +79,7 @@ const Login = () => {
             <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 text-white`}>
               <h1 className="text-5xl font-brand tracking-wide mb-6">Welcome Back!</h1>
               <p className={`text-xl mb-8 font-serif ${mutedTextClass}`}>
-                Rejoin the Athlyft community to ask freely, support others, and stay connected in a safe space.
+                Rejoin the Athylift community to ask freely, support others, and stay connected in a safe space.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ const Login = () => {
           <div className="p-8 lg:p-12 flex items-center bg-base-100">
             <div className="w-full max-w-md mx-auto">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Login to Athlyft</h2>
+                <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Login to Athylift</h2>
                 <p className={`${mutedTextClass} font-serif`}>
                   Enter your credentials to access your account
                 </p>

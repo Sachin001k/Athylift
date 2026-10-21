@@ -398,8 +398,8 @@ const Explore = () => {
 
     const shareUrl = `${window.location.origin}/explore?post=${post.id}`;
     const shareData = {
-      title: 'Athlyft post',
-      text: post.content || 'Check out this post on Athlyft',
+      title: 'Athylift post',
+      text: post.content || 'Check out this post on Athylift',
       url: shareUrl,
     };
 
@@ -481,7 +481,7 @@ const Explore = () => {
                     </Avatar>
                     <div>
                       <p className="font-semibold">
-                        {profileMap[post.user_id || '']?.full_name || 'Athlyft Member'}
+                        {profileMap[post.user_id || '']?.full_name || 'Athylift Member'}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {post.user_id ? 'Member' : 'Community'}

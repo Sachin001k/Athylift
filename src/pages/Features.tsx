@@ -35,7 +35,7 @@ const Features = () => {
         <div className="text-center mb-16">
           <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Features for Everyone</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-serif">
-            Whether you're an athlete, fan, or brand, Athlyft has something for you
+            Whether you're an athlete, fan, or brand, Athylift has something for you
           </p>
         </div>
 
@@ -112,7 +112,7 @@ const Features = () => {
         <div className="card bg-gradient-to-r from-primary to-secondary text-white">
           <div className="card-body text-center py-12">
             <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-            <p className="text-xl mb-6">Join Athlyft today and experience all these features</p>
+            <p className="text-xl mb-6">Join Athylift today and experience all these features</p>
             <div className="flex justify-center gap-4">
               <Link to="/register" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
                 Sign Up Free

@@ -14,7 +14,7 @@ const Disclaimer = () => {
               <AlertTriangle className="h-12 w-12" />
               <div>
                 <h1 className="text-3xl font-bold mb-2">Important Disclaimer</h1>
-                <p>Please read carefully before using Athlyft</p>
+                <p>Please read carefully before using Athylift</p>
               </div>
             </div>
           </div>
@@ -29,7 +29,7 @@ const Disclaimer = () => {
                 <div>
                   <h2 className="card-title mb-4">Medical & Training Advice</h2>
                   <p className="mb-4">
-                    The content shared on Athlyft is for informational purposes only and should not be considered professional medical or training advice. Always consult with qualified healthcare providers and certified trainers before starting any new fitness program or making significant changes to your training regimen.
+                    The content shared on Athylift is for informational purposes only and should not be considered professional medical or training advice. Always consult with qualified healthcare providers and certified trainers before starting any new fitness program or making significant changes to your training regimen.
                   </p>
                   <p>
                     Individual results may vary. What works for one athlete may not be suitable for another due to differences in fitness levels, health conditions, and personal circumstances.
@@ -46,7 +46,7 @@ const Disclaimer = () => {
                 <div>
                   <h2 className="card-title mb-4">No Liability</h2>
                   <p className="mb-4">
-                    Athlyft and its creators are not responsible for any injuries, accidents, or health issues that may result from following advice or training methods shared on this platform. Users engage in any physical activities at their own risk.
+                    Athylift and its creators are not responsible for any injuries, accidents, or health issues that may result from following advice or training methods shared on this platform. Users engage in any physical activities at their own risk.
                   </p>
                   <p>
                     By using this platform, you acknowledge that you are responsible for your own safety and well-being during any athletic activities.
@@ -63,7 +63,7 @@ const Disclaimer = () => {
                 <div>
                   <h2 className="card-title mb-4">Third-Party Transactions</h2>
                   <p className="mb-4">
-                    Any products, services, or transactions mentioned by users on Athlyft are independent of the platform. Athlyft does not endorse, verify, or take responsibility for any third-party offerings, purchases, or business relationships formed through our platform.
+                    Any products, services, or transactions mentioned by users on Athylift are independent of the platform. Athylift does not endorse, verify, or take responsibility for any third-party offerings, purchases, or business relationships formed through our platform.
                   </p>
                   <p>
                     Users should conduct their own research and due diligence before engaging in any transactions with other users or third parties.
@@ -80,10 +80,10 @@ const Disclaimer = () => {
                 <div>
                   <h2 className="card-title mb-4">User Responsibility</h2>
                   <p className="mb-4">
-                    Users are solely responsible for the content they post and share on Athlyft. This includes ensuring accuracy, respecting intellectual property rights, and maintaining appropriate conduct within the community.
+                    Users are solely responsible for the content they post and share on Athylift. This includes ensuring accuracy, respecting intellectual property rights, and maintaining appropriate conduct within the community.
                   </p>
                   <p>
-                    Athlyft reserves the right to remove content or suspend accounts that violate our community guidelines or terms of service.
+                    Athylift reserves the right to remove content or suspend accounts that violate our community guidelines or terms of service.
                   </p>
                 </div>
               </div>
