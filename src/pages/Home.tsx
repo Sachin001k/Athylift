@@ -154,13 +154,6 @@ const Home = () => {
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{ backgroundImage: 'repeating-linear-gradient(115deg, #fff 0 2px, transparent 2px 90px)' }}
         />
-        {[18, 46, 74].map((top, idx) => (
-          <div
-            key={top}
-            className="pointer-events-none absolute h-0.5 w-1/3 animate-lane-run bg-gradient-to-r from-transparent via-[#FF6B1A] to-transparent"
-            style={{ top: `${top}%`, animationDelay: `${idx * 0.8}s` }}
-          />
-        ))}
         <div className="container relative mx-auto grid items-center gap-12 px-4 py-16 lg:grid-cols-2 lg:py-24">
           <div>
             <p className="inline-flex animate-rise-in items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">

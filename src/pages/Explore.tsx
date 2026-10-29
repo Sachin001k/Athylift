@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, WheelEvent } from 'react';
+import { FormEvent, useEffect, useRef, useState, WheelEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Heart, MessageCircle, Share2, Play, HandHeart, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, HandHeart, X, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +55,7 @@ const escapeLike = (value: string) => value.replace(/\*/g, '').replace(/[\\%_]/g
 
 const Explore = () => {
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = (searchParams.get('q') ?? '').trim();
   const sharedPostParam = searchParams.get('post');
   const sharedPostId = sharedPostParam && UUID_PATTERN.test(sharedPostParam) ? sharedPostParam : null;
@@ -386,12 +386,33 @@ const Explore = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Athlete Feed'}</h1>
-        {searchQuery ? (
-          <Link to="/feed" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
-        ) : (
-          <div className="mb-6" />
-        )}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">{searchQuery ? `Results for "${searchQuery}"` : 'Athlete Feed'}</h1>
+            {searchQuery && <Link to="/feed" className="link link-primary text-sm">Clear search</Link>}
+          </div>
+          <form
+            className="relative w-full md:max-w-sm"
+            role="search"
+            onSubmit={(e: FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              const query = String(new FormData(e.currentTarget).get('q') ?? '').trim();
+              setSearchParams(query ? { q: query } : {});
+            }}
+          >
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/50" />
+            <input
+              key={searchQuery}
+              name="q"
+              type="search"
+              defaultValue={searchQuery}
+              placeholder="Search posts"
+              aria-label="Search posts"
+              className="input input-bordered w-full pl-10"
+              maxLength={100}
+            />
+          </form>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {loadingPosts && (

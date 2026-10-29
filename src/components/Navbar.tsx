@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
+import { useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   DropdownMenu,
@@ -49,19 +49,6 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
-
-  useEffect(() => {
-    setSearchQuery(searchParams.get('q') ?? '');
-  }, [searchParams]);
-
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    navigate(query ? `/feed?q=${encodeURIComponent(query)}` : '/feed');
-  };
-
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
@@ -140,7 +127,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               <DropdownMenuContent align="start" className="bg-base-100 text-base-content border-base-300">
                 {user && (
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="text-base-content font-semibold">Dashboard</Link>
+                    <Link to="/dashboard" className="text-base-content">Dashboard</Link>
                   </DropdownMenuItem>
                 )}
                 {PAGE_LINKS.map((item) => (
@@ -159,29 +146,21 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </Link>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-6 font-medium text-base-content">
-          {user && (
-            <Link to="/dashboard" className="text-primary font-semibold hover:opacity-80 transition-opacity">Dashboard</Link>
-          )}
-          {PAGE_LINKS.map((item) => (
-            <Link key={item.to} to={item.to} className="hover:text-primary transition-colors">{item.label}</Link>
+        <nav className="hidden lg:flex flex-1 justify-center items-center gap-7 font-medium text-base-content">
+          {(user ? [{ to: '/dashboard', label: 'Dashboard' }, ...PAGE_LINKS] : PAGE_LINKS).map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `relative py-1 transition-colors hover:text-primary after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-primary after:transition-transform after:origin-left ${
+                  isActive ? 'text-primary after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
           ))}
         </nav>
-
-        <div className="hidden flex-1 max-w-md mx-8 md:block">
-          <form className="relative" role="search" onSubmit={handleSearch}>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search athlete posts"
-              aria-label="Search posts"
-              className="input input-bordered w-full pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              maxLength={100}
-            />
-          </form>
-        </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
           <DropdownMenu>
@@ -248,7 +227,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="btn btn-ghost btn-circle avatar">
+                <button className="btn btn-ghost btn-circle p-0" aria-label="Account menu">
                   <UserAvatar
                     id={user.id}
                     name={(user.user_metadata?.full_name as string | undefined) || user.email}

@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 35% 13%;
 
-    --primary: 17 88% 40%; /* #C2410C */
+    --primary: 201 100% 35%; /* #0077B5 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 221 57% 25%; /* navy-700 #1C3366 */
@@ -33,7 +33,7 @@
 
     --border: 214 25% 87%;
     --input: 214 25% 80%;
-    --ring: 17 88% 40%;
+    --ring: 201 100% 35%;
 
     --radius: 1rem;
 
@@ -58,7 +58,7 @@
     --popover: 222 46% 12%;
     --popover-foreground: 214 33% 93%;
 
-    --primary: 21 90% 48%;
+    --primary: 200 90% 40%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 222 48% 45%;
@@ -75,15 +75,15 @@
 
     --border: 222 36% 22%;
     --input: 222 36% 28%;
-    --ring: 21 90% 48%;
+    --ring: 200 90% 40%;
     --sidebar-background: 222 47% 9%;
     --sidebar-foreground: 214 33% 93%;
-    --sidebar-primary: 21 90% 48%;
+    --sidebar-primary: 200 90% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 36% 22%;
     --sidebar-accent-foreground: 214 33% 93%;
     --sidebar-border: 222 36% 22%;
-    --sidebar-ring: 21 90% 48%;
+    --sidebar-ring: 200 90% 40%;
   }
 
   [data-theme="sport"],

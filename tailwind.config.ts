@@ -94,10 +94,6 @@ export default {
             height: "0",
           },
         },
-        "lane-run": {
-          from: { transform: "translateX(-40%)" },
-          to: { transform: "translateX(140%)" },
-        },
         marquee: {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
@@ -118,7 +114,6 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "lane-run": "lane-run 2.4s linear infinite",
         marquee: "marquee 40s linear infinite",
         "rise-in": "rise-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both",
         float: "float 6s ease-in-out infinite",
@@ -130,10 +125,9 @@ export default {
   daisyui: {
     themes: [
       {
-        // Spec tokens: navy + white + track orange. Primary is the darker orange so white
-        // button text and orange text on white both pass WCAG AA.
+        // Original Athylift blue as primary, navy surfaces, orange as a small accent.
         light: {
-          "primary": "#C2410C",
+          "primary": "#0077B5",
           "primary-content": "#FFFFFF",
           "secondary": "#1C3366",
           "secondary-content": "#FFFFFF",
@@ -152,7 +146,7 @@ export default {
           "error": "#DC2626",
         },
         dark: {
-          "primary": "#EA580C",
+          "primary": "#0A84C2",
           "primary-content": "#FFFFFF",
           "secondary": "#3B5BA9",
           "secondary-content": "#FFFFFF",
