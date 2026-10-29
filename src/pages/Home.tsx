@@ -44,7 +44,7 @@ const Home = () => {
             Athylift connects underprivileged athletes with people who believe in their potential. Discover inspiring sporting journeys, support essential equipment and training needs, and help athletes take the next step towards their dreams.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/explore" className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90 shadow-lg shadow-primary/30">
+            <Link to="/athletes" className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90 shadow-lg shadow-primary/30">
               Explore athletes
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
@@ -129,7 +129,7 @@ const Home = () => {
               </p>
               <div className="card-actions mt-4">
                 <Link to="/register?role=athlete" className="btn bg-primary text-white border-none hover:bg-primary/90">Create an athlete profile</Link>
-                <Link to="/add-post" className="btn btn-outline btn-primary">Post a support request</Link>
+                <Link to="/requests/new" className="btn btn-outline btn-primary">Post a support request</Link>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ const Home = () => {
                 Explore athletes and their support requests, see exactly what each contribution is for, and help them take the next step in their sport.
               </p>
               <div className="card-actions mt-4">
-                <Link to="/explore" className="btn bg-secondary text-white border-none hover:bg-secondary/90">Browse funding requests</Link>
+                <Link to="/requests" className="btn bg-secondary text-white border-none hover:bg-secondary/90">Browse funding requests</Link>
                 <Link to="/register?role=donor" className="btn btn-outline btn-secondary">Become a donor</Link>
               </div>
             </div>
@@ -181,15 +181,15 @@ const Home = () => {
             <div>
               <h3 className="font-semibold text-lg mb-4 text-base-content">Explore</h3>
               <ul className="space-y-2 font-serif">
-                <li><Link to="/explore" className="link link-hover text-base-content">Athletes</Link></li>
-                <li><Link to="/explore" className="link link-hover text-base-content">Feed</Link></li>
-                <li><Link to="/explore" className="link link-hover text-base-content">Funding requests</Link></li>
+                <li><Link to="/athletes" className="link link-hover text-base-content">Athletes</Link></li>
+                <li><Link to="/feed" className="link link-hover text-base-content">Feed</Link></li>
+                <li><Link to="/requests" className="link link-hover text-base-content">Funding requests</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold text-lg mb-4 text-base-content">Learn</h3>
               <ul className="space-y-2 font-serif">
-                <li><Link to="/features" className="link link-hover text-base-content">How it works</Link></li>
+                <li><Link to="/how-it-works" className="link link-hover text-base-content">How it works</Link></li>
                 <li><Link to="/about" className="link link-hover text-base-content">About</Link></li>
                 <li><Link to="/faq" className="link link-hover text-base-content">Help & FAQ</Link></li>
                 <li><Link to="/contact" className="link link-hover text-base-content">Contact</Link></li>

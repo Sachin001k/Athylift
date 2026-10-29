@@ -19,11 +19,11 @@ interface NavbarProps {
 }
 
 const PAGE_LINKS = [
-  { to: '/', label: 'Home' },
+  { to: '/athletes', label: 'Athletes' },
+  { to: '/feed', label: 'Feed' },
+  { to: '/requests', label: 'Funding requests' },
+  { to: '/how-it-works', label: 'How it works' },
   { to: '/about', label: 'About' },
-  { to: '/features', label: 'How it works' },
-  { to: '/faq', label: 'FAQ' },
-  { to: '/contact', label: 'Contact' },
 ];
 
 type NotificationItem = {
@@ -43,6 +43,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     user,
     loading: authLoading,
     avatarUrl: profileAvatar,
+    role,
     unreadCount: notificationCount,
     setUnreadCount: setNotificationCount,
   } = useAuth();
@@ -58,7 +59,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
-    navigate(query ? `/explore?q=${encodeURIComponent(query)}` : '/explore');
+    navigate(query ? `/feed?q=${encodeURIComponent(query)}` : '/feed');
   };
 
   const getThemeIcon = () => {
@@ -139,7 +140,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               <DropdownMenuContent align="start" className="bg-base-100 text-base-content border-base-300">
                 {user && (
                   <DropdownMenuItem asChild>
-                    <Link to="/explore" className="text-base-content font-semibold">Feed</Link>
+                    <Link to="/dashboard" className="text-base-content font-semibold">Dashboard</Link>
                   </DropdownMenuItem>
                 )}
                 {PAGE_LINKS.map((item) => (
@@ -160,7 +161,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
         <nav className="hidden lg:flex items-center gap-6 font-medium text-base-content">
           {user && (
-            <Link to="/explore" className="text-primary font-semibold hover:opacity-80 transition-opacity">Feed</Link>
+            <Link to="/dashboard" className="text-primary font-semibold hover:opacity-80 transition-opacity">Dashboard</Link>
           )}
           {PAGE_LINKS.map((item) => (
             <Link key={item.to} to={item.to} className="hover:text-primary transition-colors">{item.label}</Link>
@@ -241,8 +242,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <div className="h-12 w-12" aria-hidden="true" />
           ) : !user ? (
             <div className="flex items-center gap-2">
-              <Link to="/login" className="btn btn-ghost">Login</Link>
-              <Link to="/register" className="btn btn-primary text-white">Sign Up</Link>
+              <Link to="/login" className="btn btn-ghost">Log in</Link>
+              <Link to="/register" className="btn btn-primary text-white">Sign up</Link>
             </div>
           ) : (
             <DropdownMenu>
@@ -261,7 +262,20 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="text-base-content">Profile</Link>
+                  <Link to="/dashboard" className="text-base-content">Dashboard</Link>
+                </DropdownMenuItem>
+                {role === 'athlete' && (
+                  <DropdownMenuItem asChild>
+                    <Link to={`/athletes/${user.id}`} className="text-base-content">My public profile</Link>
+                  </DropdownMenuItem>
+                )}
+                {role === 'donor' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/donations" className="text-base-content">My support</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="text-base-content">Account & photos</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} className="text-base-content">
                   Logout

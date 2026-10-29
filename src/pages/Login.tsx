@@ -17,7 +17,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const fromState = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/explore';
+  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/dashboard';
 
   useEffect(() => {
     const redirectIfLoggedIn = async () => {

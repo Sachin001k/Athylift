@@ -26,6 +26,7 @@ type Donation = {
   beneficiary_name: string | null;
   post_reference: string | null;
   post_id: string | null;
+  request_id: string | null;
   status: string;
 };
 
@@ -54,7 +55,7 @@ const Donations = () => {
       const { data, error } = await supabase
         .from('donations')
         .select(
-          'id, amount, currency, frequency, payment_method, message, dedication, country, cover_fees, allow_updates, created_at, cause_title, cause_image, beneficiary_name, post_reference, post_id, status',
+          'id, amount, currency, frequency, payment_method, message, dedication, country, cover_fees, allow_updates, created_at, cause_title, cause_image, beneficiary_name, post_reference, post_id, request_id, status',
         )
         .eq('user_id', userData.user.id)
         .order('created_at', { ascending: false });
@@ -150,8 +151,12 @@ const Donations = () => {
                       <span className="font-medium">Beneficiary:</span> {donation.beneficiary_name}
                     </p>
                   )}
-                  {donation.post_id ? (
-                    <Link to={`/explore?post=${donation.post_id}`} className="link link-primary text-sm">
+                  {donation.request_id ? (
+                    <Link to={`/requests/${donation.request_id}`} className="link link-primary text-sm">
+                      View request
+                    </Link>
+                  ) : donation.post_id ? (
+                    <Link to={`/feed?post=${donation.post_id}`} className="link link-primary text-sm">
                       View post
                     </Link>
                   ) : (

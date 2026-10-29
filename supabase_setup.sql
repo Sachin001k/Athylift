@@ -101,6 +101,10 @@ create table if not exists public.posts (
   share_count integer not null default 0
 );
 
+-- update / achievement are written by users; support_request posts only by the database (see support_requests).
+alter table public.posts add column if not exists post_type text not null default 'update'
+  check (post_type in ('update', 'achievement', 'support_request'));
+
 create index if not exists posts_user_id_idx on public.posts (user_id);
 create index if not exists posts_created_at_idx on public.posts (created_at desc);
 
@@ -288,7 +292,7 @@ grant select (id, full_name, bio, youtube_url, avatar_url, cover_url, role, crea
 grant insert (id, full_name, bio, phone, youtube_url, avatar_url, cover_url, role) on public.profiles to authenticated;
 grant update (full_name, bio, phone, youtube_url, avatar_url, cover_url, role) on public.profiles to authenticated;
 
-grant insert (user_id, content, audience, tags, hashtags, attachment_kind, attachment_name, attachment_preview, attachment_url, attachment_path)
+grant insert (user_id, content, audience, tags, hashtags, attachment_kind, attachment_name, attachment_preview, attachment_url, attachment_path, post_type)
   on public.posts to authenticated;
 grant update (content, audience, tags, hashtags, attachment_kind, attachment_name, attachment_preview, attachment_url, attachment_path)
   on public.posts to authenticated;
@@ -358,7 +362,7 @@ create policy "profiles: update own" on public.profiles
 create policy "posts: public read" on public.posts
   for select using (true);
 create policy "posts: insert own" on public.posts
-  for insert to authenticated with check (user_id = auth.uid());
+  for insert to authenticated with check (user_id = auth.uid() and post_type in ('update', 'achievement'));
 create policy "posts: update own" on public.posts
   for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "posts: delete own" on public.posts
@@ -458,4 +462,288 @@ create policy "athylift: delete own files" on storage.objects
   for delete to authenticated using (
     bucket_id in ('post-attachments', 'profile-media')
     and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ===========================================================================
+-- Fundraising model: athletes, donors, achievements, support requests.
+-- Payments are not connected: donations stay "pledged" and amount_raised only
+-- counts "paid" rows, which only a future payment webhook (service role) can set.
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- profiles: role + athlete details
+-- ---------------------------------------------------------------------------
+alter table public.profiles
+  add column if not exists sport text check (char_length(sport) <= 60),
+  add column if not exists discipline text check (char_length(discipline) <= 80),
+  add column if not exists location text check (char_length(location) <= 120),
+  add column if not exists academy text check (char_length(academy) <= 120),
+  add column if not exists goals text check (char_length(goals) <= 2000),
+  add column if not exists is_minor boolean not null default false,
+  add column if not exists verification_status text not null default 'unverified'
+    check (verification_status in ('unverified', 'pending', 'verified')),
+  add column if not exists is_sample boolean not null default false,
+  add column if not exists onboarding_complete boolean not null default false;
+
+-- Roles from the previous app (Parent, Caregiver, Therapist / Expert) are cleared so those
+-- users choose athlete or donor in onboarding. "Supporter" maps to donor.
+update public.profiles
+   set role = case lower(role) when 'athlete' then 'athlete' when 'donor' then 'donor' when 'supporter' then 'donor' end
+ where role is not null and role not in ('athlete', 'donor');
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_role_value_check') then
+    alter table public.profiles add constraint profiles_role_value_check check (role in ('athlete', 'donor'));
+  end if;
+end$$;
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    new.id,
+    new.email,
+    left(nullif(trim(coalesce(
+      new.raw_user_meta_data->>'full_name',
+      concat_ws(' ', new.raw_user_meta_data->>'first_name', new.raw_user_meta_data->>'last_name')
+    )), ''), 120),
+    case lower(new.raw_user_meta_data->>'role') when 'athlete' then 'athlete' when 'donor' then 'donor' end
+  )
+  on conflict (id) do nothing;
+  return new;
+end$$;
+
+-- location and academy are not in the public column grant: the directory view hides them for minors.
+grant select (sport, discipline, goals, is_minor, verification_status, is_sample, onboarding_complete)
+  on public.profiles to anon, authenticated;
+grant insert (sport, discipline, location, academy, goals, is_minor, onboarding_complete) on public.profiles to authenticated;
+grant update (sport, discipline, location, academy, goals, is_minor, onboarding_complete) on public.profiles to authenticated;
+
+-- Runs with the view owner's rights, so it can show location/academy for adults only.
+create or replace view public.athlete_directory as
+select id, full_name, avatar_url, cover_url, bio, sport, discipline, goals,
+       case when is_minor then null else location end as location,
+       case when is_minor then null else academy end as academy,
+       is_minor, verification_status, is_sample, created_at
+  from public.profiles
+ where role = 'athlete' and onboarding_complete;
+
+revoke all on public.athlete_directory from anon, authenticated;
+grant select on public.athlete_directory to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- achievements
+-- ---------------------------------------------------------------------------
+create table if not exists public.achievements (
+  id uuid primary key default gen_random_uuid(),
+  athlete_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 120),
+  event text check (char_length(event) <= 120),
+  level text not null default 'local' check (level in ('local', 'state', 'national', 'international')),
+  achieved_on date,
+  description text check (char_length(description) <= 1000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists achievements_athlete_idx on public.achievements (athlete_id, achieved_on desc);
+
+-- ---------------------------------------------------------------------------
+-- support_requests
+-- ---------------------------------------------------------------------------
+create table if not exists public.support_requests (
+  id uuid primary key default gen_random_uuid(),
+  athlete_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  title text not null check (char_length(title) between 3 and 80),
+  description text not null check (char_length(description) between 1 and 5000),
+  category text not null check (category in ('equipment', 'coaching', 'training', 'academy_fees', 'travel', 'other')),
+  target_amount numeric(12,2) not null check (target_amount > 0 and target_amount <= 10000000),
+  currency text not null default 'INR' check (char_length(currency) = 3),
+  intended_use text not null check (char_length(intended_use) between 1 and 2000),
+  status text not null default 'active' check (status in ('draft', 'active', 'funded', 'closed')),
+  deadline date,
+  image_url text check (char_length(image_url) <= 2048),
+  image_path text check (char_length(image_path) <= 1024),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists support_requests_athlete_idx on public.support_requests (athlete_id);
+create index if not exists support_requests_status_idx on public.support_requests (status, created_at desc);
+
+drop trigger if exists support_requests_set_updated_at on public.support_requests;
+create trigger support_requests_set_updated_at
+  before update on public.support_requests
+  for each row execute function public.set_updated_at();
+
+-- The feed post announcing a request is deleted with it.
+alter table public.posts add column if not exists support_request_id uuid
+  references public.support_requests(id) on delete cascade;
+create index if not exists posts_support_request_idx on public.posts (support_request_id);
+
+alter table public.donations add column if not exists request_id uuid
+  references public.support_requests(id) on delete set null;
+create index if not exists donations_request_idx on public.donations (request_id);
+
+-- Only verified ("paid") donations count. Pledges are reported separately.
+create or replace function public.request_amount_raised(p_request_id uuid)
+returns numeric language sql stable security definer set search_path = public as $$
+  select coalesce(sum(amount), 0) from public.donations where request_id = p_request_id and status = 'paid';
+$$;
+
+create or replace view public.support_request_totals as
+select r.id as request_id,
+       coalesce(sum(d.amount) filter (where d.status = 'paid'), 0) as amount_raised,
+       count(d.id) filter (where d.status = 'pledged') as pledge_count,
+       coalesce(sum(d.amount) filter (where d.status = 'pledged'), 0) as amount_pledged
+  from public.support_requests r
+  left join public.donations d on d.request_id = r.id
+ group by r.id;
+
+revoke all on public.support_request_totals from anon, authenticated;
+grant select on public.support_request_totals to anon, authenticated;
+
+-- Only athletes create requests; "funded" is set by the database when the target is reached.
+create or replace function public.support_request_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.profiles where id = new.athlete_id and role = 'athlete') then
+    raise exception 'Only athletes can post support requests';
+  end if;
+  if new.status = 'funded' and (tg_op = 'INSERT' or old.status <> 'funded')
+     and public.request_amount_raised(new.id) < new.target_amount then
+    raise exception 'A request is marked funded automatically when its target is reached';
+  end if;
+  return new;
+end$$;
+
+drop trigger if exists support_requests_guard on public.support_requests;
+create trigger support_requests_guard
+  before insert or update on public.support_requests
+  for each row execute function public.support_request_guard();
+
+-- Publishing a request (insert as active, or draft -> active) announces it in the feed once.
+create or replace function public.on_support_request_published()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'active'
+     and (tg_op = 'INSERT' or old.status = 'draft')
+     and not exists (select 1 from public.posts where support_request_id = new.id) then
+    insert into public.posts (user_id, content, post_type, support_request_id, attachment_kind, attachment_url)
+    values (
+      new.athlete_id,
+      left(new.title || E'\n\n' || new.description, 5000),
+      'support_request',
+      new.id,
+      case when new.image_url is not null then 'image' end,
+      new.image_url
+    );
+  end if;
+  return new;
+end$$;
+
+drop trigger if exists support_requests_publish on public.support_requests;
+create trigger support_requests_publish
+  after insert or update of status on public.support_requests
+  for each row execute function public.on_support_request_published();
+
+-- Pledges notify the athlete; a paid donation that reaches the target marks the request funded.
+create or replace function public.on_request_donation_change()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  r public.support_requests%rowtype;
+begin
+  if new.request_id is null then
+    return new;
+  end if;
+  select * into r from public.support_requests where id = new.request_id;
+  if not found then
+    return new;
+  end if;
+  if tg_op = 'INSERT' and new.status = 'pledged' then
+    insert into public.notifications (user_id, title, body)
+    values (r.athlete_id, 'New pledge',
+            public.actor_display_name(new.user_id) || ' pledged support for "' || r.title || '"');
+  end if;
+  if r.status = 'active' and public.request_amount_raised(r.id) >= r.target_amount then
+    update public.support_requests set status = 'funded' where id = r.id;
+    insert into public.notifications (user_id, title, body)
+    values (r.athlete_id, 'Request funded', '"' || r.title || '" reached its target');
+  end if;
+  return new;
+end$$;
+
+drop trigger if exists donations_request_change on public.donations;
+create trigger donations_request_change
+  after insert or update of status on public.donations
+  for each row execute function public.on_request_donation_change();
+
+-- ---------------------------------------------------------------------------
+-- Privileges and row level security for the fundraising tables
+-- ---------------------------------------------------------------------------
+revoke all on public.achievements, public.support_requests from anon, authenticated;
+
+grant select on public.achievements to anon, authenticated;
+grant insert (athlete_id, title, event, level, achieved_on, description) on public.achievements to authenticated;
+grant update (title, event, level, achieved_on, description) on public.achievements to authenticated;
+grant delete on public.achievements to authenticated;
+
+grant select on public.support_requests to anon, authenticated;
+grant insert (athlete_id, title, description, category, target_amount, currency, intended_use, status, deadline, image_url, image_path)
+  on public.support_requests to authenticated;
+grant update (title, description, category, target_amount, currency, intended_use, status, deadline, image_url, image_path)
+  on public.support_requests to authenticated;
+grant delete on public.support_requests to authenticated;
+
+grant insert (request_id) on public.donations to authenticated;
+
+revoke all on function public.request_amount_raised(uuid) from public;
+grant execute on function public.request_amount_raised(uuid) to anon, authenticated;
+revoke all on function public.support_request_guard() from public, anon, authenticated;
+revoke all on function public.on_support_request_published() from public, anon, authenticated;
+revoke all on function public.on_request_donation_change() from public, anon, authenticated;
+
+alter table public.achievements enable row level security;
+alter table public.support_requests enable row level security;
+
+drop policy if exists "achievements: public read" on public.achievements;
+drop policy if exists "achievements: insert own" on public.achievements;
+drop policy if exists "achievements: update own" on public.achievements;
+drop policy if exists "achievements: delete own" on public.achievements;
+create policy "achievements: public read" on public.achievements
+  for select using (true);
+create policy "achievements: insert own" on public.achievements
+  for insert to authenticated with check (athlete_id = auth.uid());
+create policy "achievements: update own" on public.achievements
+  for update to authenticated using (athlete_id = auth.uid()) with check (athlete_id = auth.uid());
+create policy "achievements: delete own" on public.achievements
+  for delete to authenticated using (athlete_id = auth.uid());
+
+-- Drafts are visible only to their athlete.
+drop policy if exists "support_requests: read published or own" on public.support_requests;
+drop policy if exists "support_requests: insert own" on public.support_requests;
+drop policy if exists "support_requests: update own" on public.support_requests;
+drop policy if exists "support_requests: delete own" on public.support_requests;
+create policy "support_requests: read published or own" on public.support_requests
+  for select using (status <> 'draft' or athlete_id = auth.uid());
+create policy "support_requests: insert own" on public.support_requests
+  for insert to authenticated with check (athlete_id = auth.uid());
+create policy "support_requests: update own" on public.support_requests
+  for update to authenticated using (athlete_id = auth.uid()) with check (athlete_id = auth.uid());
+create policy "support_requests: delete own" on public.support_requests
+  for delete to authenticated using (athlete_id = auth.uid());
+
+-- Pledges go only to active requests, and not to your own.
+drop policy if exists "donations: insert own" on public.donations;
+create policy "donations: insert own" on public.donations
+  for insert to authenticated with check (
+    user_id = auth.uid()
+    and (
+      request_id is null
+      or exists (
+        select 1 from public.support_requests r
+         where r.id = request_id and r.status = 'active' and r.athlete_id <> auth.uid()
+      )
+    )
   );

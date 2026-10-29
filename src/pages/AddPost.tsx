@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
+import { Link } from 'react-router-dom';
 import { Upload, Loader2, Image as ImageIcon, Tag, Share2, Globe2, Paperclip } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -19,6 +21,8 @@ const AddPost = () => {
   const [content, setContent] = useState('');
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [audience, setAudience] = useState<'anyone' | 'connections'>('anyone');
+  const [postType, setPostType] = useState<'update' | 'achievement'>('update');
+  const { role } = useAuth();
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
@@ -121,6 +125,7 @@ const AddPost = () => {
       user_id: userData.user.id,
       content: content.trim(),
       audience,
+      post_type: postType,
       tags,
       hashtags,
       attachment_kind: attachment?.kind ?? null,
@@ -169,12 +174,20 @@ const AddPost = () => {
     <Layout showStats={false}>
       <div className="container mx-auto px-4 py-10 max-w-4xl">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white font-semibold">in</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white font-semibold">A</div>
           <div className="leading-tight">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">athlete network</p>
-            <p className="text-lg font-light text-base-content">Create a post</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Athylift feed</p>
+            <p className="text-lg font-light text-base-content">Share an update</p>
           </div>
         </div>
+        {role === 'athlete' && (
+          <div className="alert mb-4 text-sm">
+            <span>
+              Need funding for equipment, coaching or fees?{' '}
+              <Link to="/requests/new" className="link link-primary">Post a support request</Link> instead, so donors can see your target and progress.
+            </span>
+          </div>
+        )}
 
         <div className="card bg-base-100 shadow-lg border border-base-300 overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-start gap-3">
@@ -187,6 +200,19 @@ const AddPost = () => {
                 </span>
               </div>
               <div className="mt-1 flex flex-wrap gap-2">
+                {(['update', 'achievement'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setPostType(type)}
+                    aria-pressed={postType === type}
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${
+                      postType === type ? 'border-primary bg-primary text-white' : 'border-base-300 text-muted-foreground'
+                    }`}
+                  >
+                    {type === 'update' ? 'Training update' : 'Achievement'}
+                  </button>
+                ))}
                 <button
                   type="button"
                   onClick={() => setAudience('anyone')}

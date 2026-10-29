@@ -21,7 +21,10 @@ const dbUrl = process.env.SUPABASE_DB_URL;
 const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
 const sql = readFileSync(resolve(root, 'supabase_setup.sql'), 'utf8');
 
-const TABLES = ['profiles', 'posts', 'post_likes', 'post_comments', 'notifications', 'donations', 'contact_messages'];
+const TABLES = [
+  'profiles', 'posts', 'post_likes', 'post_comments', 'notifications', 'donations', 'contact_messages',
+  'achievements', 'support_requests',
+];
 const BUCKETS = [
   { id: 'post-attachments', file_size_limit: 52428800 },
   { id: 'profile-media', file_size_limit: 5242880, allowed_mime_types: ['image/*'] },

@@ -12,7 +12,7 @@ const Register = () => {
   const [searchParams] = useSearchParams();
   // Carries the page the user originally asked for (set by ProtectedRoute) through Login <-> Register.
   const fromState = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/explore';
+  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/dashboard';
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -23,7 +23,7 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   // ?role=athlete or ?role=donor (from the Home and About CTAs) preselects the role.
-  const [role, setRole] = useState(searchParams.get('role') === 'athlete' ? 'Athlete' : 'Donor');
+  const [role, setRole] = useState(searchParams.get('role') === 'athlete' ? 'athlete' : 'donor');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -194,8 +194,8 @@ const Register = () => {
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                 >
-                  <option value="Athlete">An athlete looking for support</option>
-                  <option value="Donor">A donor who wants to support athletes</option>
+                  <option value="athlete">An athlete looking for support</option>
+                  <option value="donor">A donor who wants to support athletes</option>
                 </select>
               </div>
 

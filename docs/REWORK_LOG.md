@@ -113,3 +113,39 @@ Scope: rewrite every user-facing text for underprivileged athletes and donors. N
 Notes:
 - CTAs point at existing routes until Phase 2 adds `/athletes`, `/requests`, `/how-it-works`: "Explore athletes" / "Browse funding requests" → `/explore`, "How it works" → `/features`, "Post a support request" → `/add-post`.
 - Pre-existing lint error `Explore.tsx:412` (`no-explicit-any`) left as is.
+
+## Phase 2–3 — Working model (2026-10-29)
+
+Scope: athlete profiles, funding requests, role-based signup/onboarding/dashboard, public feed. Payments stay prototype (pledges only). Verification workflow, reports/moderation, sample data and real gateway are not built yet.
+
+### Database (`supabase_setup.sql`, new section at the end; safe to re-run)
+
+Live DB before this change (read-only check): 2 profiles (roles `Parent`, `Supporter`), 0 posts, 0 donations, 1 contact message.
+
+| Change | Detail |
+| --- | --- |
+| `profiles` | + `sport`, `discipline`, `location`, `academy`, `goals`, `is_minor`, `verification_status` (not client-writable), `is_sample` (not client-writable), `onboarding_complete`. `role` limited to `athlete`/`donor`; old roles: `Supporter` → `donor`, others → null (user picks in onboarding) |
+| `athlete_directory` view | Public athlete list; hides `location`/`academy` when `is_minor` (those columns are not in the public grant) |
+| `achievements` (new) | Owner-managed, public read |
+| `support_requests` (new) | Draft/active/funded/closed; drafts visible to owner only; only athletes can create (trigger); `funded` set only by DB when paid total ≥ target; publishing creates a `support_request` feed post |
+| `posts` | + `post_type` (`update`/`achievement` from users, `support_request` only via trigger), + `support_request_id` (cascade) |
+| `donations` | + `request_id`; inserts only to active requests, not your own; pledge notifies the athlete |
+| `support_request_totals` view | `amount_raised` = paid only; pledges counted separately |
+
+No tables dropped.
+
+### App
+
+New: `src/lib/athylift.ts`, `src/components/fundraising/*`, pages `Athletes`, `AthleteDetail`, `Requests`, `RequestDetail`, `RequestForm`, `Onboarding`, `Dashboard`.
+
+Routes: `/athletes`, `/athletes/:id`, `/feed` (public; `/explore` redirects), `/requests`, `/requests/:id`, `/requests/new` + `/requests/:id/edit` (athletes), `/onboarding`, `/dashboard`, `/how-it-works` (`/features` redirects), `/signup` → `/register`.
+
+- `ProtectedRoute`: sends users without a role / finished onboarding to `/onboarding`; `role` prop restricts athlete-only pages.
+- `AuthContext`: exposes `role`, `onboardingComplete`, `profileReady`.
+- Navbar/Sidebar: Athletes · Feed · Funding requests · How it works · About; Dashboard and role-specific items when logged in.
+- Feed: post type badges, author links to athlete profile, "Support" on request posts → request page. Removed the per-post donate modal (pledges now go through requests).
+- Login/Register/Reset default destination: `/dashboard`.
+
+### Not verified
+
+SQL is syntax-checked (pglast) but not yet applied: `.env` has no `SUPABASE_DB_URL` / `SUPABASE_ACCESS_TOKEN`. Pages using new tables will error until it is applied.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, WheelEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Heart, MessageCircle, Share2, Play, Gift, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, HandHeart, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -19,6 +19,8 @@ type FeedPost = {
   likes_count?: number | null;
   comments_count?: number | null;
   share_count?: number | null;
+  post_type?: string | null;
+  support_request_id?: string | null;
 };
 
 type PostComment = {
@@ -32,14 +34,19 @@ type PostComment = {
 type ProfileInfo = {
   full_name: string | null;
   avatar_url: string | null;
+  role: string | null;
+  sport: string | null;
+};
+
+const POST_TYPE_LABELS: Record<string, string> = {
+  achievement: 'Achievement',
+  support_request: 'Funding request',
 };
 
 const PAGE_SIZE = 10;
 const MAX_COMMENT_CHARS = 2000;
-const MAX_DONATION = 1000000;
-const MAX_DONATION_MESSAGE = 1000;
 const POST_COLUMNS =
-  'id, user_id, content, attachment_url, attachment_kind, attachment_name, attachment_preview, created_at, likes_count, comments_count, share_count';
+  'id, user_id, content, attachment_url, attachment_kind, attachment_name, attachment_preview, created_at, likes_count, comments_count, share_count, post_type, support_request_id';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Escapes LIKE wildcards so a search for "50%" matches literally.
@@ -60,7 +67,6 @@ const Explore = () => {
   // Incremented on every feed reload so a slower, older request can't overwrite newer results.
   const loadIdRef = useRef(0);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
-  const [donateSubmitting, setDonateSubmitting] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
@@ -74,10 +80,6 @@ const Explore = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
-  const [donateModalPostId, setDonateModalPostId] = useState<string | null>(null);
-  const [donateAmount, setDonateAmount] = useState('');
-  const [donateMessage, setDonateMessage] = useState('');
-  const [thankYouInfo, setThankYouInfo] = useState<{ name: string; amount: string } | null>(null);
 
   const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
   // Clamp in case the post list changed while the video viewer was open.
@@ -90,13 +92,13 @@ const Explore = () => {
     if (idsToFetch.length === 0) return;
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url')
+      .select('id, full_name, avatar_url, role, sport')
       .in('id', idsToFetch);
     if (error || !data) return;
     setProfileMap((prev) => {
       const next = { ...prev };
       data.forEach((p) => {
-        next[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url };
+        next[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url, role: p.role, sport: p.sport };
       });
       return next;
     });
@@ -122,15 +124,13 @@ const Explore = () => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (thankYouInfo) setThankYouInfo(null);
-      else if (donateModalPostId) setDonateModalPostId(null);
-      else if (commentModalPostId) setCommentModalPostId(null);
+      if (commentModalPostId) setCommentModalPostId(null);
       else if (imageModalUrl) setImageModalUrl(null);
       else if (showVideoModal) setShowVideoModal(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [thankYouInfo, donateModalPostId, commentModalPostId, imageModalUrl, showVideoModal]);
+  }, [commentModalPostId, imageModalUrl, showVideoModal]);
 
   const fetchPostsPage = async (offset: number) => {
     let query = supabase.from('posts').select(POST_COLUMNS);
@@ -281,61 +281,6 @@ const Explore = () => {
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
 
-  const openDonateModal = (postId: string) => {
-    if (!user) {
-      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
-      return;
-    }
-    setDonateModalPostId(postId);
-    setDonateAmount('');
-    setDonateMessage('');
-  };
-
-  const submitDonation = async () => {
-    if (!donateModalPostId || donateSubmitting) return;
-    if (!user) {
-      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
-      return;
-    }
-    const numericAmount = Math.round(parseFloat(donateAmount) * 100) / 100;
-    if (Number.isNaN(numericAmount) || numericAmount < 1 || numericAmount > MAX_DONATION) {
-      toast({
-        title: 'Enter an amount',
-        description: `Please enter an amount between ₹1 and ₹${MAX_DONATION.toLocaleString('en-IN')}.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-    const finalName = profileMap[user.id || '']?.full_name || user.email || 'Supporter';
-    setDonateSubmitting(true);
-    const { error } = await supabase.from('donations').insert({
-      user_id: user.id,
-      beneficiary_name: null,
-      post_reference: donateModalPostId,
-      post_id: donateModalPostId,
-      cause_id: null,
-      cause_title: 'Post donation',
-      cause_image: null,
-      amount: numericAmount,
-      currency: 'INR',
-      frequency: 'one-time',
-      payment_method: 'app',
-      message: donateMessage.trim().slice(0, MAX_DONATION_MESSAGE) || null,
-      dedication: null,
-      country: null,
-      cover_fees: false,
-      allow_updates: false,
-    });
-    setDonateSubmitting(false);
-    if (error) {
-      toast({ title: 'Could not save donation', description: error.message || 'Try again.', variant: 'destructive' });
-      return;
-    }
-
-    setDonateModalPostId(null);
-    setThankYouInfo({ name: finalName, amount: numericAmount.toFixed(2) });
-  };
-
   const openCommentModal = async (postId: string) => {
     setCommentModalPostId(postId);
     setCommentDraft('');
@@ -396,7 +341,7 @@ const Explore = () => {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
 
-    const shareUrl = `${window.location.origin}/explore?post=${post.id}`;
+    const shareUrl = `${window.location.origin}/feed?post=${post.id}`;
     const shareData = {
       title: 'Athylift post',
       text: post.content || 'Check out this post on Athylift',
@@ -443,7 +388,7 @@ const Explore = () => {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Athlete Feed'}</h1>
         {searchQuery ? (
-          <Link to="/explore" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
+          <Link to="/feed" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
         ) : (
           <div className="mb-6" />
         )}
@@ -480,14 +425,27 @@ const Explore = () => {
                       <AvatarFallback>US</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold">
-                        {profileMap[post.user_id || '']?.full_name || 'Athylift Member'}
-                      </p>
+                      {profileMap[post.user_id || '']?.role === 'athlete' ? (
+                        <Link to={`/athletes/${post.user_id}`} className="font-semibold hover:text-primary">
+                          {profileMap[post.user_id || '']?.full_name || 'Athlete'}
+                        </Link>
+                      ) : (
+                        <p className="font-semibold">{profileMap[post.user_id || '']?.full_name || 'Athylift Member'}</p>
+                      )}
                       <p className="text-sm text-muted-foreground">
-                        {post.user_id ? 'Member' : 'Community'}
+                        {profileMap[post.user_id || '']?.role === 'athlete'
+                          ? profileMap[post.user_id || '']?.sport || 'Athlete'
+                          : profileMap[post.user_id || '']?.role === 'donor'
+                            ? 'Supporter'
+                            : 'Member'}
                       </p>
                     </div>
                   </div>
+                  {post.post_type && POST_TYPE_LABELS[post.post_type] && (
+                    <span className={`badge ml-auto ${post.post_type === 'support_request' ? 'badge-secondary text-white' : 'badge-accent'}`}>
+                      {POST_TYPE_LABELS[post.post_type]}
+                    </span>
+                  )}
                 </div>
 
                 {/* Post Media */}
@@ -561,10 +519,16 @@ const Explore = () => {
                     <span>{post.share_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-secondary btn-sm gap-2 text-white" onClick={() => openDonateModal(post.id)}>
-                    <Gift className="h-5 w-5" />
-                    Donate
-                  </button>
+                  {post.support_request_id ? (
+                    <Link to={`/requests/${post.support_request_id}`} className="btn btn-secondary btn-sm gap-2 text-white">
+                      <HandHeart className="h-5 w-5" />
+                      Support
+                    </Link>
+                  ) : profileMap[post.user_id || '']?.role === 'athlete' ? (
+                    <Link to={`/athletes/${post.user_id}`} className="btn btn-outline btn-sm">
+                      View profile
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -637,12 +601,11 @@ const Explore = () => {
                   >
                     Comment ({activeVideo.comments_count ?? 0})
                   </button>
-                  <button
-                    className="btn btn-accent btn-sm text-white"
-                    onClick={() => openDonateModal(activeVideo.id)}
-                  >
-                    Donate
-                  </button>
+                  {activeVideo.support_request_id && (
+                    <Link to={`/requests/${activeVideo.support_request_id}`} className="btn btn-accent btn-sm text-white">
+                      Support
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -746,118 +709,6 @@ const Explore = () => {
         </div>
       )}
 
-      {donateModalPostId && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={(e) => e.target === e.currentTarget && setDonateModalPostId(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
-            <button
-              onClick={() => setDonateModalPostId(null)}
-              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage
-                    src={
-                      profileMap[user?.id || '']?.avatar_url ||
-                      (user ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}` : undefined)
-                    }
-                  />
-                  <AvatarFallback>{(user?.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-semibold">Support this athlete</h3>
-                  <p className="text-sm text-muted-foreground">Pledge support towards this athlete's sporting needs.</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="form-control w-full">
-                  <div className="label">
-                    <span className="label-text">Amount (₹)</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="1"
-                    max={MAX_DONATION}
-                    step="0.01"
-                    className="input input-bordered w-full"
-                    placeholder="Enter amount"
-                    value={donateAmount}
-                    onChange={(e) => setDonateAmount(e.target.value)}
-                  />
-                </label>
-                <label className="form-control w-full">
-                  <div className="label">
-                    <span className="label-text">Message (optional)</span>
-                  </div>
-                  <textarea
-                    className="textarea textarea-bordered w-full"
-                    rows={3}
-                    placeholder="Leave a note of encouragement"
-                    maxLength={MAX_DONATION_MESSAGE}
-                    value={donateMessage}
-                    onChange={(e) => setDonateMessage(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => setDonateModalPostId(null)}>Cancel</button>
-                <button
-                  className="btn btn-primary btn-sm text-white"
-                  onClick={submitDonation}
-                  disabled={donateSubmitting}
-                >
-                  {donateSubmitting ? 'Saving...' : 'Donate'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {thankYouInfo && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={(e) => e.target === e.currentTarget && setThankYouInfo(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
-            <button
-              onClick={() => setThankYouInfo(null)}
-              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="p-6 space-y-4 text-center">
-              <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl font-bold text-white shadow-lg border border-base-300">
-                  🎊
-                </div>
-              </div>
-              <h3 className="text-2xl font-semibold">Thank you, {thankYouInfo.name}!</h3>
-              <p className="text-sm text-muted-foreground">
-                We recorded your ₹{thankYouInfo.amount} pledge. Online payments are not connected yet, so no money has been charged.
-              </p>
-              <div className="bg-base-200 rounded-xl p-3 text-sm text-base-content border border-base-300">
-                <p className="font-semibold">Message</p>
-                <p className="text-muted-foreground">{donateMessage?.trim() || 'No message provided.'}</p>
-              </div>
-              <button className="btn btn-primary text-white w-full" onClick={() => setThankYouInfo(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };
