@@ -17,6 +17,7 @@ import {
   SupportRequest,
 } from '@/lib/athylift';
 import { UserAvatar } from '@/components/UserAvatar';
+import { CoverArt } from '@/components/CoverArt';
 
 type PostPreview = { id: string; content: string | null; post_type: string; created_at: string };
 
@@ -95,12 +96,11 @@ const AthleteDetail = () => {
     <Layout showStats={false}>
       <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8">
         <section className="card bg-base-100 shadow-xl overflow-hidden">
-          <div
-            className="h-36 bg-gradient-to-r from-primary to-secondary"
-            style={athlete.cover_url ? { backgroundImage: `url(${athlete.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-          />
+          <div className="h-36 sm:h-48">
+            <CoverArt url={athlete.cover_url} seed={athlete.id} />
+          </div>
           <div className="card-body pt-0">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
               <UserAvatar
                 id={athlete.id}
                 name={athlete.full_name}

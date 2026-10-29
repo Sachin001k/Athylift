@@ -6,9 +6,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { PROFILE_BUCKET, removeStoredFile, storagePathFromPublicUrl, userFilePath } from '@/lib/storage';
 import { UserAvatar } from '@/components/UserAvatar';
+import { CoverArt } from '@/components/CoverArt';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const DEFAULT_COVER = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200';
 
 type ProfileRecord = {
   full_name: string | null;
@@ -29,7 +29,7 @@ const Profile = () => {
   const [phone, setPhone] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [youtubeInput, setYoutubeInput] = useState('');
-  const [coverImage, setCoverImage] = useState(DEFAULT_COVER);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,7 +57,7 @@ const Profile = () => {
         setBio(record.bio || '');
         setPhone(record.phone || '');
         setYoutubeUrl(record.youtube_url || '');
-        setCoverImage(record.cover_url || DEFAULT_COVER);
+        setCoverImage(record.cover_url || null);
         setProfileImage(record.avatar_url || null);
       }
       const { data: postImages, error: galleryError } = await supabase
@@ -232,13 +232,15 @@ const Profile = () => {
         {/* Hero Section */}
         <div className="card bg-base-100 shadow-xl mb-8">
           <div className="relative">
-            <div className="h-64 rounded-t-2xl overflow-hidden relative group">
-              <img
-                src={coverImage}
-                alt="Cover"
-                className="w-full h-full object-cover"
-              />
-              <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <div className="h-40 sm:h-64 rounded-t-2xl overflow-hidden relative group">
+              <CoverArt url={coverImage} seed={user?.id} />
+              {/* Touch screens have no hover, so a visible button opens the same picker. */}
+              <label className="btn btn-sm absolute bottom-3 right-3 gap-2 border-none bg-black/50 text-white hover:bg-black/70 sm:hidden">
+                <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} disabled={saving} />
+                <Camera className="h-4 w-4" />
+                Change cover
+              </label>
+              <label className="absolute inset-0 hidden sm:flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <input
                   type="file"
                   accept="image/*"
@@ -253,8 +255,8 @@ const Profile = () => {
               </label>
             </div>
 
-            <div className="absolute -bottom-16 left-8">
-              <div className="avatar relative group">
+            <div className="absolute z-10 -bottom-16 left-4 sm:left-8">
+              <div className="relative group">
                 <UserAvatar
                   id={user?.id}
                   name={name || user?.email}
@@ -288,7 +290,7 @@ const Profile = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={120}
-                  className="input input-bordered flex-1"
+                  className="input input-bordered flex-1 min-w-0"
                 />
                 <button
                   onClick={() => persistProfile({ full_name: name })}
@@ -334,7 +336,7 @@ const Profile = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   maxLength={32}
-                  className="input input-bordered flex-1"
+                  className="input input-bordered flex-1 min-w-0"
                 />
                 <button
                   onClick={() => persistProfile({ phone })}
@@ -382,14 +384,14 @@ const Profile = () => {
               ) : (
                 <p className="text-sm text-muted-foreground">Add a YouTube link to showcase your training or competition footage.</p>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="text"
                   placeholder="Enter YouTube URL"
                   value={youtubeInput}
                   onChange={(e) => setYoutubeInput(e.target.value)}
                   maxLength={500}
-                  className="input input-bordered flex-1"
+                  className="input input-bordered flex-1 min-w-0"
                 />
                 <button
                   onClick={handleAddVideo}

@@ -138,11 +138,11 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2" aria-label="Athylift home">
             <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
-            <span className="text-xl sm:text-2xl font-brand font-bold uppercase text-primary tracking-wide">Athylift</span>
+            <span className="hidden min-[380px]:inline text-xl sm:text-2xl font-brand font-bold uppercase text-primary tracking-wide">Athylift</span>
           </Link>
         </div>
 

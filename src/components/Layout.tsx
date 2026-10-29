@@ -16,7 +16,7 @@ export const Layout = ({ children, showStats = true }: LayoutProps) => {
       <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex w-full">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 min-w-0 min-h-[calc(100vh-4rem)]">
           {children}
         </main>
         {showStats && <StatsRail />}
