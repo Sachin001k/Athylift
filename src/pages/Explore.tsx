@@ -418,7 +418,7 @@ const Explore = () => {
       try {
         if (!navigator.clipboard) throw new Error('Clipboard unavailable');
         await navigator.clipboard.writeText(shareUrl);
-        toast({ title: 'Link copied', description: 'Share it with your friends.' });
+        toast({ title: 'Link copied', description: 'Share it to help this athlete find supporters.' });
         shared = true;
       } catch {
         toast({ title: 'Share unavailable', description: 'Could not open share dialog', variant: 'destructive' });
@@ -441,7 +441,7 @@ const Explore = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Explore Feed'}</h1>
+        <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Athlete Feed'}</h1>
         {searchQuery ? (
           <Link to="/explore" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
         ) : (
@@ -456,7 +456,7 @@ const Explore = () => {
           )}
           {!loadingPosts && posts.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              {searchQuery ? 'No posts match your search.' : 'No posts yet. Create one to get started.'}
+              {searchQuery ? 'No posts match your search.' : 'No posts yet. Athletes\' stories, training updates and support requests will show up here.'}
             </p>
           )}
           {!loadingPosts && posts.map((post) => (
@@ -773,8 +773,8 @@ const Explore = () => {
                   <AvatarFallback>{(user?.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-semibold">Send a donation</h3>
-                  <p className="text-sm text-muted-foreground">Support this creator with a quick tip.</p>
+                  <h3 className="text-xl font-semibold">Support this athlete</h3>
+                  <p className="text-sm text-muted-foreground">Pledge support towards this athlete's sporting needs.</p>
                 </div>
               </div>
               <div className="space-y-3">
@@ -800,7 +800,7 @@ const Explore = () => {
                   <textarea
                     className="textarea textarea-bordered w-full"
                     rows={3}
-                    placeholder="Share a note with your donation"
+                    placeholder="Leave a note of encouragement"
                     maxLength={MAX_DONATION_MESSAGE}
                     value={donateMessage}
                     onChange={(e) => setDonateMessage(e.target.value)}

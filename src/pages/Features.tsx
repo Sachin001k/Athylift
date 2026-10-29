@@ -1,30 +1,22 @@
 import { Link } from 'react-router-dom';
-import { User, Heart, Building, CheckCircle } from 'lucide-react';
+import { Trophy, HandHeart, CheckCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 
 const Features = () => {
   const athleteFeatures = [
-    'Create a professional athlete profile',
-    'Share your training journey and achievements',
-    'Connect with fellow athletes worldwide',
-    'Showcase your gallery and videos',
-    'Gain recognition in your sport',
+    'Create a profile with your sport, achievements and goals',
+    'Share training updates and results with supporters',
+    'Post support requests for equipment, coaching, training or academy fees',
+    'Explain exactly how each contribution will be used',
+    'Keep donors updated on the progress your support made possible',
   ];
 
-  const fanFeatures = [
-    'Follow your favorite athletes',
-    'Get inspired by success stories',
-    'Engage with the community',
-    'Support athletes you believe in',
-    'Stay updated on athlete journeys',
-  ];
-
-  const brandFeatures = [
-    'Connect with authentic athletes',
-    'Discover emerging talent',
-    'Build brand partnerships',
-    'Reach engaged sports audience',
-    'Create meaningful sponsorships',
+  const donorFeatures = [
+    'Explore athletes across different sports and communities',
+    'Read each athlete\'s story, achievements and goals',
+    'Browse support requests and see what they will fund',
+    'Contribute towards the needs that matter to you',
+    'Follow the journeys of the athletes you support',
   ];
 
   return (
@@ -33,9 +25,9 @@ const Features = () => {
       <div className="container mx-auto max-w-6xl py-12 px-4">
         {/* Hero */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Features for Everyone</h1>
+          <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">How Athylift Works</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-serif">
-            Whether you're an athlete, fan, or brand, Athylift has something for you
+            Athletes share their journeys and funding needs. Donors discover them and help close the gap between talent and resources.
           </p>
         </div>
 
@@ -44,11 +36,11 @@ const Features = () => {
           <div className="card-body">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-8 w-8 text-primary" />
+                <Trophy className="h-8 w-8 text-primary" />
               </div>
               <div>
                 <h2 className="text-3xl font-bold">For Athletes</h2>
-                <p className="text-muted-foreground">Build your presence and connect with your community</p>
+                <p className="text-muted-foreground">Share your story and ask for the support you need</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -62,45 +54,22 @@ const Features = () => {
           </div>
         </div>
 
-        {/* For Fans */}
+        {/* For Donors */}
         <div className="card bg-base-100 shadow-xl mb-8">
           <div className="card-body">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center">
-                <Heart className="h-8 w-8 text-secondary" />
+                <HandHeart className="h-8 w-8 text-secondary" />
               </div>
               <div>
-                <h2 className="text-3xl font-bold">For Fans</h2>
-                <p className="text-muted-foreground">Get closer to the athletes you admire</p>
+                <h2 className="text-3xl font-bold">For Donors</h2>
+                <p className="text-muted-foreground">Help talented athletes overcome financial barriers</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fanFeatures.map((feature, idx) => (
+              {donorFeatures.map((feature, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <CheckCircle className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>{feature}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* For Brands */}
-        <div className="card bg-base-100 shadow-xl mb-8">
-          <div className="card-body">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
-                <Building className="h-8 w-8 text-accent" />
-              </div>
-              <div>
-                <h2 className="text-3xl font-bold">For Brands</h2>
-                <p className="text-muted-foreground">Connect with athletes and grow your brand</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {brandFeatures.map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
                   <span>{feature}</span>
                 </div>
               ))}
@@ -112,13 +81,13 @@ const Features = () => {
         <div className="card bg-gradient-to-r from-primary to-secondary text-white">
           <div className="card-body text-center py-12">
             <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-            <p className="text-xl mb-6">Join Athylift today and experience all these features</p>
-            <div className="flex justify-center gap-4">
-              <Link to="/register" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
-                Sign Up Free
+            <p className="text-xl mb-6">Join as an athlete looking for support, or as a donor ready to help.</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link to="/register?role=athlete" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
+                Join as an athlete
               </Link>
-              <Link to="/explore" className="btn btn-lg btn-outline text-white border-base-100 hover:bg-base-100 hover:text-primary">
-                Explore Platform
+              <Link to="/register?role=donor" className="btn btn-lg btn-outline text-white border-base-100 hover:bg-base-100 hover:text-primary">
+                Become a donor
               </Link>
             </div>
           </div>

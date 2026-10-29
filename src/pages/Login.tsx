@@ -79,26 +79,26 @@ const Login = () => {
             <div className={`h-full w-full backdrop-brightness-95 bg-gradient-to-b from-black/20 via-transparent to-black/40 p-12 flex flex-col justify-center p-2 text-white`}>
               <h1 className="text-5xl font-brand tracking-wide mb-6">Welcome Back!</h1>
               <p className={`text-xl mb-8 font-serif ${mutedTextClass}`}>
-                Rejoin the Athylift community to ask freely, support others, and stay connected in a safe space.
+                Log in to follow athletes' journeys, share your progress, and support sporting dreams.
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
-                  <p>Ask openly or anonymously without judgment</p>
+                  <p>Athletes: share achievements and funding needs</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
-                  <p>Connect with parents and trusted experts</p>
+                  <p>Donors: discover athletes and support their goals</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-full bg-base-100/20 flex items-center justify-center p-2 text-white`}>
                     ✓
                   </div>
-                  <p>Stay informed with private updates and guidance</p>
+                  <p>Follow progress made possible by your support</p>
                 </div>
               </div>
             </div>

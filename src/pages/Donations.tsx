@@ -108,7 +108,7 @@ const Donations = () => {
               <HeartHandshake className="h-8 w-8 mx-auto text-primary" />
               <p className="font-semibold">No donations yet</p>
               <p className="text-sm text-base-content/70">
-                Start making impact by donating from any post or the donate section.
+                Explore the athlete feed and pledge support towards an athlete's sporting needs.
               </p>
             </CardContent>
           </Card>

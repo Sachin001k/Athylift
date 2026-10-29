@@ -21,8 +21,7 @@ interface NavbarProps {
 const PAGE_LINKS = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
-  { to: '/terms', label: 'Terms' },
-  { to: '/privacy', label: 'Privacy' },
+  { to: '/features', label: 'How it works' },
   { to: '/faq', label: 'FAQ' },
   { to: '/contact', label: 'Contact' },
 ];
@@ -173,7 +172,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search posts in the Athylift community"
+              placeholder="Search athlete posts"
               aria-label="Search posts"
               className="input input-bordered w-full pl-10"
               value={searchQuery}

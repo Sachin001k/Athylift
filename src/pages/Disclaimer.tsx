@@ -61,12 +61,12 @@ const Disclaimer = () => {
               <div className="flex items-start gap-4">
                 <DollarSign className="h-8 w-8 text-info flex-shrink-0 mt-1" />
                 <div>
-                  <h2 className="card-title mb-4">Third-Party Transactions</h2>
+                  <h2 className="card-title mb-4">Fundraising and Donations</h2>
                   <p className="mb-4">
-                    Any products, services, or transactions mentioned by users on Athylift are independent of the platform. Athylift does not endorse, verify, or take responsibility for any third-party offerings, purchases, or business relationships formed through our platform.
+                    Athlete profiles and support requests are written by athletes. Athylift encourages appropriate verification and responsible fundraising, but donors should review each request and its intended use before contributing. Online payments are not live yet, so no money is collected through Athylift today.
                   </p>
                   <p>
-                    Users should conduct their own research and due diligence before engaging in any transactions with other users or third parties.
+                    Any products, services, or transactions arranged directly between users or with third parties are independent of Athylift.
                   </p>
                 </div>
               </div>

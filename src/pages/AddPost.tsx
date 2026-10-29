@@ -202,14 +202,14 @@ const AddPost = () => {
           <div className="px-5 pb-3">
             <textarea
               rows={5}
-              placeholder="Share an update about your training, match, or progress..."
+              placeholder="Share a training update, an achievement, or what you need support with (equipment, coaching, academy fees)..."
               className="w-full resize-none border-0 focus:ring-0 text-sm placeholder:text-muted-foreground text-base-content bg-transparent"
               maxLength={MAX_CHARS}
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
             <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>Keep it helpful and respectful.</span>
+              <span>Be honest about your needs and how support will be used.</span>
               <span>{content.length} / {MAX_CHARS}</span>
             </div>
           </div>

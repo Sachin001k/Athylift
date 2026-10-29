@@ -219,7 +219,7 @@ const Profile = () => {
         <div className="container mx-auto px-4 py-8 max-w-5xl">
           <div className="card bg-base-100 shadow-xl p-6">
             <p className="text-lg font-semibold mb-2">Please log in to view your profile.</p>
-            <p className="text-sm text-muted-foreground">Navigate to Login and sign in with your Supabase credentials.</p>
+            <p className="text-sm text-muted-foreground">Log in to manage your Athylift profile.</p>
           </div>
         </div>
       </Layout>
@@ -376,7 +376,7 @@ const Profile = () => {
                   />
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Add a YouTube link to showcase a video.</p>
+                <p className="text-sm text-muted-foreground">Add a YouTube link to showcase your training or competition footage.</p>
               )}
               <div className="flex gap-2">
                 <input

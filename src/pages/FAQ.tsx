@@ -6,31 +6,35 @@ const FAQ = () => {
   const faqs = [
     {
       question: 'What is Athylift?',
-      answer: 'Athylift is a safe, supportive platform where you can freely ask parenting or personal questions—without judgment. You can remain anonymous and connect with a community that understands your journey.',
+      answer: 'Athylift is a fundraising and community platform that connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees.',
     },
     {
-      question: 'Can I ask questions anonymously?',
-      answer: 'Absolutely. When posting, you can choose to hide your identity. Your question will be visible to the community without revealing your name or profile.',
+      question: 'Who can join as an athlete?',
+      answer: 'Athletes of any sport who face financial barriers to training or competing. You create a profile, share your achievements and goals, and post what you need help funding.',
     },
     {
-      question: 'Is my personal data safe?',
-      answer: 'Yes. Your data is encrypted and never sold or shared with advertisers. Read more in our Privacy Policy.',
+      question: 'What can athletes ask for support with?',
+      answer: 'Sporting needs such as equipment, coaching, training, academy fees and travel to competitions. Every request should explain how the support will be used.',
     },
     {
-      question: 'Who answers my questions?',
-      answer: 'Answers come from our parenting community, certified coaches, and experienced parents. Every response is moderated for respect and safety.',
+      question: 'How do donors choose who to support?',
+      answer: 'Donors explore athlete profiles and support requests, read about each athlete\'s goals and needs, and choose the journeys they want to back.',
     },
     {
-      question: 'Can I delete a post or comment later?',
-      answer: 'Yes, you can edit or delete your content anytime from your profile settings. You control your presence.',
+      question: 'Can I donate online right now?',
+      answer: 'Not yet. You can record a pledge to support an athlete, but online payments are not connected and no money is charged. We will announce when payments go live.',
     },
     {
-      question: 'How do I report inappropriate content?',
-      answer: 'Each post and reply has a "Report" button. Our moderation team reviews all flagged content within 24 hours to keep the community safe.',
+      question: 'How are athletes under 18 protected?',
+      answer: 'Profiles of minors hide location and exact age from public view, and phone numbers or addresses are never shown publicly.',
+    },
+    {
+      question: 'How do I report a misleading profile or request?',
+      answer: 'Contact us with a link to the profile or post. We review reports to keep fundraising on Athylift honest and responsible.',
     },
     {
       question: 'Is Athylift free to use?',
-      answer: 'Yes, Athylift is completely free. We’re here to support your journey, not profit from your privacy.',
+      answer: 'Yes. Joining as an athlete or as a donor is free.',
     },
   ];
 
@@ -44,7 +48,7 @@ const FAQ = () => {
               <HelpCircle className="h-10 w-10 text-primary" />
             </div>
             <h1 className="text-5xl font-brand tracking-wide mb-3">Frequently Asked Questions</h1>
-            <p className="text-xl font-serif">Quick answers about staying safe, supported, and anonymous.</p>
+            <p className="text-xl font-serif">Quick answers for athletes and donors.</p>
           </div>
 
           <div className="space-y-4">

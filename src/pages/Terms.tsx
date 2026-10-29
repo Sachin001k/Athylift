@@ -30,13 +30,23 @@ const Terms = () => {
               </div>
 
               <div>
+                <h2 className="text-2xl font-semibold">Athletes and Support Requests</h2>
+                <p>Athletes must describe their achievements, needs, funding goals and intended use of support truthfully. Contributions must be used for the sporting purpose stated in the support request, and athletes should keep supporters updated on how support was used.</p>
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-semibold">Donors and Contributions</h2>
+                <p>Donors choose which athletes and requests to support. Athylift helps present needs clearly but cannot guarantee the outcome of any athlete's sporting journey. Online payments are not live yet; pledges recorded today do not charge any money.</p>
+              </div>
+
+              <div>
                 <h2 className="text-2xl font-semibold">Privacy Policy</h2>
                 <p>We take your privacy seriously. Your personal data will be managed in accordance with our Privacy Policy.</p>
               </div>
 
               <div>
                 <h2 className="text-2xl font-semibold">Account Termination</h2>
-                <p>We reserve the right to suspend or terminate user accounts that violate our terms or engage in fraudulent or harmful activity.</p>
+                <p>We reserve the right to suspend or terminate user accounts that violate our terms or engage in fraudulent fundraising or harmful activity.</p>
               </div>
 
               <div>

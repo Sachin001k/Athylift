@@ -15,7 +15,7 @@ const NotFound = () => {
       <div className="flex items-center justify-center p-12">
         <div className="text-center card bg-base-100 shadow-lg p-8">
           <h1 className="mb-4 text-4xl font-brand tracking-wide text-primary">404</h1>
-          <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
+          <p className="mb-4 text-xl text-muted-foreground">This page doesn't exist. Let's get you back to the athletes.</p>
           <Link to="/" className="btn btn-primary">
             Return to Home
           </Link>
