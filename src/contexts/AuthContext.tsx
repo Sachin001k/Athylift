@@ -1,6 +1,7 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { asRole, Role } from '@/lib/athylift';
 
 // Auth state lives here, above the router, so it survives page changes.
 // Without it every page re-checked the session and the header flickered to "logged out" and back.
@@ -10,6 +11,10 @@ interface AuthContextValue {
   // True only until the first session check finishes after the app loads.
   loading: boolean;
   avatarUrl: string | null;
+  role: Role | null;
+  onboardingComplete: boolean;
+  // False while the signed-in user's profile (role, onboarding) is still loading.
+  profileReady: boolean;
   unreadCount: number;
   setUnreadCount: (count: number) => void;
   refreshProfile: () => Promise<void>;
@@ -22,8 +27,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [role, setRole] = useState<Role | null>(null);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  // Which user the role/onboarding state belongs to, so a new login never sees the previous user's.
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const user = session?.user ?? null;
   const userId = user?.id ?? null;
+  // The latest user a profile load was started for; older responses are dropped.
+  const currentUserRef = useRef<string | null>(null);
+  currentUserRef.current = userId;
 
   useEffect(() => {
     // getSession reads the stored session locally, so this is fast and needs no network round trip.
@@ -42,18 +54,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!userId) {
       setAvatarUrl(null);
       setUnreadCount(0);
+      setRole(null);
+      setOnboardingComplete(false);
+      setProfileUserId(null);
       return;
     }
     const [{ data: profile, error: profileError }, { count, error: countError }] = await Promise.all([
-      supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle(),
+      supabase.from('profiles').select('avatar_url, role, onboarding_complete').eq('id', userId).maybeSingle(),
       supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('is_read', false),
     ]);
-    if (profileError) console.warn('Could not load profile:', profileError.message);
-    else setAvatarUrl(profile?.avatar_url || null);
+    if (currentUserRef.current !== userId) return;
+    if (profileError) {
+      // Keep whatever was known; a blip shouldn't bounce a set-up user to onboarding.
+      console.warn('Could not load profile:', profileError.message);
+    } else {
+      setAvatarUrl(profile?.avatar_url || null);
+      setRole(asRole(profile?.role));
+      setOnboardingComplete(Boolean(profile?.onboarding_complete));
+    }
+    setProfileUserId(userId);
     if (countError) console.warn('Could not load notifications:', countError.message);
     else setUnreadCount(count ?? 0);
   }, [userId]);
@@ -74,7 +97,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, avatarUrl, unreadCount, setUnreadCount, refreshProfile }}
+      value={{
+        user,
+        session,
+        loading,
+        avatarUrl,
+        role,
+        onboardingComplete,
+        profileReady: !userId || profileUserId === userId,
+        unreadCount,
+        setUnreadCount,
+        refreshProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

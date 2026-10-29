@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, WheelEvent } from 'react';
+import { FormEvent, useEffect, useRef, useState, WheelEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Heart, MessageCircle, Share2, Play, Gift, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Heart, MessageCircle, Share2, Play, HandHeart, X, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
+import { UserAvatar } from '@/components/UserAvatar';
+import { FundingProgress } from '@/components/fundraising/FundingProgress';
+import { categoryLabel, fetchTotals, REQUEST_COLUMNS, RequestTotals, STATUS_BADGE, STATUS_LABELS, SupportRequest } from '@/lib/athylift';
 
 type FeedPost = {
   id: string;
@@ -19,6 +21,8 @@ type FeedPost = {
   likes_count?: number | null;
   comments_count?: number | null;
   share_count?: number | null;
+  post_type?: string | null;
+  support_request_id?: string | null;
 };
 
 type PostComment = {
@@ -32,14 +36,19 @@ type PostComment = {
 type ProfileInfo = {
   full_name: string | null;
   avatar_url: string | null;
+  role: string | null;
+  sport: string | null;
+};
+
+const POST_TYPE_LABELS: Record<string, string> = {
+  achievement: 'Achievement',
+  support_request: 'Funding request',
 };
 
 const PAGE_SIZE = 10;
 const MAX_COMMENT_CHARS = 2000;
-const MAX_DONATION = 1000000;
-const MAX_DONATION_MESSAGE = 1000;
 const POST_COLUMNS =
-  'id, user_id, content, attachment_url, attachment_kind, attachment_name, attachment_preview, created_at, likes_count, comments_count, share_count';
+  'id, user_id, content, attachment_url, attachment_kind, attachment_name, attachment_preview, created_at, likes_count, comments_count, share_count, post_type, support_request_id';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Escapes LIKE wildcards so a search for "50%" matches literally.
@@ -48,7 +57,7 @@ const escapeLike = (value: string) => value.replace(/\*/g, '').replace(/[\\%_]/g
 
 const Explore = () => {
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = (searchParams.get('q') ?? '').trim();
   const sharedPostParam = searchParams.get('post');
   const sharedPostId = sharedPostParam && UUID_PATTERN.test(sharedPostParam) ? sharedPostParam : null;
@@ -60,7 +69,6 @@ const Explore = () => {
   // Incremented on every feed reload so a slower, older request can't overwrite newer results.
   const loadIdRef = useRef(0);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
-  const [donateSubmitting, setDonateSubmitting] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
@@ -74,10 +82,8 @@ const Explore = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
-  const [donateModalPostId, setDonateModalPostId] = useState<string | null>(null);
-  const [donateAmount, setDonateAmount] = useState('');
-  const [donateMessage, setDonateMessage] = useState('');
-  const [thankYouInfo, setThankYouInfo] = useState<{ name: string; amount: string } | null>(null);
+  // Request + funding totals behind each support_request post.
+  const [requestMap, setRequestMap] = useState<Record<string, { request: SupportRequest; totals?: RequestTotals }>>({});
 
   const videoPosts = posts.filter((post) => post.attachment_kind === 'video' && post.attachment_url);
   // Clamp in case the post list changed while the video viewer was open.
@@ -90,14 +96,28 @@ const Explore = () => {
     if (idsToFetch.length === 0) return;
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url')
+      .select('id, full_name, avatar_url, role, sport')
       .in('id', idsToFetch);
     if (error || !data) return;
     setProfileMap((prev) => {
       const next = { ...prev };
       data.forEach((p) => {
-        next[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url };
+        next[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url, role: p.role, sport: p.sport };
       });
+      return next;
+    });
+  };
+
+  const fetchRequests = async (feedPosts: FeedPost[]) => {
+    const ids = Array.from(new Set(feedPosts.map((p) => p.support_request_id).filter((id): id is string => Boolean(id))));
+    if (ids.length === 0) return;
+    const [{ data }, totals] = await Promise.all([
+      supabase.from('support_requests').select(REQUEST_COLUMNS).in('id', ids),
+      fetchTotals(ids),
+    ]);
+    setRequestMap((prev) => {
+      const next = { ...prev };
+      ((data as SupportRequest[]) || []).forEach((r) => (next[r.id] = { request: r, totals: totals[r.id] }));
       return next;
     });
   };
@@ -122,15 +142,13 @@ const Explore = () => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (thankYouInfo) setThankYouInfo(null);
-      else if (donateModalPostId) setDonateModalPostId(null);
-      else if (commentModalPostId) setCommentModalPostId(null);
+      if (commentModalPostId) setCommentModalPostId(null);
       else if (imageModalUrl) setImageModalUrl(null);
       else if (showVideoModal) setShowVideoModal(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [thankYouInfo, donateModalPostId, commentModalPostId, imageModalUrl, showVideoModal]);
+  }, [commentModalPostId, imageModalUrl, showVideoModal]);
 
   const fetchPostsPage = async (offset: number) => {
     let query = supabase.from('posts').select(POST_COLUMNS);
@@ -173,7 +191,7 @@ const Explore = () => {
       }
       if (isStale()) return;
       setPosts(fetched);
-      await fetchProfiles(fetched.map((p) => p.user_id));
+      await Promise.all([fetchProfiles(fetched.map((p) => p.user_id)), fetchRequests(fetched)]);
       const likedIds = await fetchLikedIds(userId, fetched.map((p) => p.id));
       if (isStale()) return;
       setLiked(likedIds);
@@ -195,7 +213,7 @@ const Explore = () => {
       setFeedOffset((prev) => prev + fetched.length);
       setPosts((prev) => [...prev, ...fetched.filter((p) => !prev.some((existing) => existing.id === p.id))]);
       setHasMorePosts(fetched.length === PAGE_SIZE);
-      await fetchProfiles(fetched.map((p) => p.user_id));
+      await Promise.all([fetchProfiles(fetched.map((p) => p.user_id)), fetchRequests(fetched)]);
       const newlyLiked = await fetchLikedIds(user?.id, fetched.map((p) => p.id));
       setLiked((prev) => Array.from(new Set([...prev, ...newlyLiked])));
     }
@@ -281,61 +299,6 @@ const Explore = () => {
   const openImageModal = (url: string) => setImageModalUrl(url);
   const closeImageModal = () => setImageModalUrl(null);
 
-  const openDonateModal = (postId: string) => {
-    if (!user) {
-      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
-      return;
-    }
-    setDonateModalPostId(postId);
-    setDonateAmount('');
-    setDonateMessage('');
-  };
-
-  const submitDonation = async () => {
-    if (!donateModalPostId || donateSubmitting) return;
-    if (!user) {
-      toast({ title: 'Login required', description: 'Please log in to donate.', variant: 'destructive' });
-      return;
-    }
-    const numericAmount = Math.round(parseFloat(donateAmount) * 100) / 100;
-    if (Number.isNaN(numericAmount) || numericAmount < 1 || numericAmount > MAX_DONATION) {
-      toast({
-        title: 'Enter an amount',
-        description: `Please enter an amount between ₹1 and ₹${MAX_DONATION.toLocaleString('en-IN')}.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-    const finalName = profileMap[user.id || '']?.full_name || user.email || 'Supporter';
-    setDonateSubmitting(true);
-    const { error } = await supabase.from('donations').insert({
-      user_id: user.id,
-      beneficiary_name: null,
-      post_reference: donateModalPostId,
-      post_id: donateModalPostId,
-      cause_id: null,
-      cause_title: 'Post donation',
-      cause_image: null,
-      amount: numericAmount,
-      currency: 'INR',
-      frequency: 'one-time',
-      payment_method: 'app',
-      message: donateMessage.trim().slice(0, MAX_DONATION_MESSAGE) || null,
-      dedication: null,
-      country: null,
-      cover_fees: false,
-      allow_updates: false,
-    });
-    setDonateSubmitting(false);
-    if (error) {
-      toast({ title: 'Could not save donation', description: error.message || 'Try again.', variant: 'destructive' });
-      return;
-    }
-
-    setDonateModalPostId(null);
-    setThankYouInfo({ name: finalName, amount: numericAmount.toFixed(2) });
-  };
-
   const openCommentModal = async (postId: string) => {
     setCommentModalPostId(postId);
     setCommentDraft('');
@@ -396,7 +359,7 @@ const Explore = () => {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
 
-    const shareUrl = `${window.location.origin}/explore?post=${post.id}`;
+    const shareUrl = `${window.location.origin}/feed?post=${post.id}`;
     const shareData = {
       title: 'Athylift post',
       text: post.content || 'Check out this post on Athylift',
@@ -418,7 +381,7 @@ const Explore = () => {
       try {
         if (!navigator.clipboard) throw new Error('Clipboard unavailable');
         await navigator.clipboard.writeText(shareUrl);
-        toast({ title: 'Link copied', description: 'Share it with your friends.' });
+        toast({ title: 'Link copied', description: 'Share it to help this athlete find supporters.' });
         shared = true;
       } catch {
         toast({ title: 'Share unavailable', description: 'Could not open share dialog', variant: 'destructive' });
@@ -441,62 +404,106 @@ const Explore = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">{searchQuery ? `Results for "${searchQuery}"` : 'Explore Feed'}</h1>
-        {searchQuery ? (
-          <Link to="/explore" className="link link-primary text-sm mb-6 inline-block">Clear search</Link>
-        ) : (
-          <div className="mb-6" />
-        )}
+        <div className="mx-auto mb-6 flex max-w-2xl flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">{searchQuery ? `Results for "${searchQuery}"` : 'Athlete Feed'}</h1>
+            {searchQuery && <Link to="/feed" className="link link-primary text-sm">Clear search</Link>}
+          </div>
+          <form
+            className="relative w-full md:max-w-xs"
+            role="search"
+            onSubmit={(e: FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              const query = String(new FormData(e.currentTarget).get('q') ?? '').trim();
+              setSearchParams(query ? { q: query } : {});
+            }}
+          >
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/50" />
+            <input
+              key={searchQuery}
+              name="q"
+              type="search"
+              defaultValue={searchQuery}
+              placeholder="Search posts"
+              aria-label="Search posts"
+              className="input input-bordered w-full pl-10"
+              maxLength={100}
+            />
+          </form>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="mx-auto flex max-w-2xl flex-col gap-6">
           {loadingPosts && (
-            <div className="col-span-full flex justify-center py-6">
+            <div className="flex justify-center py-6">
               <span className="loading loading-spinner loading-lg text-primary" />
             </div>
           )}
           {!loadingPosts && posts.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {searchQuery ? 'No posts match your search.' : 'No posts yet. Create one to get started.'}
-            </p>
+            <div className="rounded-2xl border-2 border-dashed border-base-300 bg-base-100 p-8 text-center text-base-content/80">
+              {searchQuery ? 'No posts match your search.' : "No posts yet. Athletes' stories, training updates and support requests will show up here."}
+            </div>
           )}
-          {!loadingPosts && posts.map((post) => (
-            <div
+          {!loadingPosts && posts.map((post) => {
+            const author = profileMap[post.user_id || ''];
+            const isAthlete = author?.role === 'athlete';
+            const linked = post.support_request_id ? requestMap[post.support_request_id] : undefined;
+            // Request posts are "title\n\ndescription"; show the title as a heading.
+            const [requestTitle, ...rest] = linked ? (post.content || '').split('\n\n') : [];
+            const body = linked ? linked.request.description || rest.join('\n\n') : post.content;
+            return (
+            <article
               key={post.id}
-              className={`card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow ${
+              className={`card bg-base-100 shadow-md ring-1 ring-base-300 transition-shadow hover:shadow-lg ${
                 post.id === sharedPostId ? 'ring-2 ring-primary' : ''
               }`}
             >
-              <div className="card-body p-4">
+              <div className="card-body gap-4 p-5">
                 {/* Author Header */}
-                <div className="flex items-center justify-start mb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage
-                        src={
-                          profileMap[post.user_id || '']?.avatar_url ||
-                          `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user_id || 'member'}`
-                        }
-                      />
-                      <AvatarFallback>US</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold">
-                        {profileMap[post.user_id || '']?.full_name || 'Athylift Member'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {post.user_id ? 'Member' : 'Community'}
-                      </p>
-                    </div>
+                <header className="flex items-start gap-3">
+                  <UserAvatar id={post.user_id} name={author?.full_name} url={author?.avatar_url} className="h-11 w-11" />
+                  <div className="min-w-0 flex-1">
+                    {isAthlete ? (
+                      <Link to={`/athletes/${post.user_id}`} className="block truncate font-semibold hover:text-primary">
+                        {author?.full_name || 'Athlete'}
+                      </Link>
+                    ) : (
+                      <p className="truncate font-semibold">{author?.full_name || 'Athylift Member'}</p>
+                    )}
+                    <p className="truncate text-sm text-base-content/70">
+                      {isAthlete ? author?.sport || 'Athlete' : author?.role === 'donor' ? 'Supporter' : 'Member'}
+                      {post.created_at && ` · ${new Date(post.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                    </p>
                   </div>
-                </div>
+                  {post.post_type && POST_TYPE_LABELS[post.post_type] && (
+                    <span
+                      className={`badge shrink-0 whitespace-nowrap ${
+                        post.post_type === 'support_request' ? 'badge-primary text-white' : 'badge-accent'
+                      }`}
+                    >
+                      {POST_TYPE_LABELS[post.post_type]}
+                    </span>
+                  )}
+                </header>
+
+                {/* Post Content */}
+                {linked ? (
+                  <div className="space-y-2">
+                    <Link to={`/requests/${linked.request.id}`} className="block text-lg font-semibold leading-snug hover:text-primary">
+                      {linked.request.title || requestTitle}
+                    </Link>
+                    <p className="line-clamp-3 whitespace-pre-line text-base-content/85">{body}</p>
+                  </div>
+                ) : (
+                  post.content && <p className="whitespace-pre-line text-base-content/90">{post.content}</p>
+                )}
 
                 {/* Post Media */}
                 {(post.attachment_kind === 'image' && post.attachment_url) && (
                   <button onClick={() => openImageModal(post.attachment_url!)} className="w-full">
                     <img
                       src={post.attachment_url}
-                      alt="post"
-                      className="w-full aspect-video object-cover rounded-lg border border-base-300"
+                      alt=""
+                      className="w-full aspect-video object-cover rounded-xl border border-base-300"
                     />
                   </button>
                 )}
@@ -506,12 +513,12 @@ const Explore = () => {
                     <video
                       src={post.attachment_url}
                       poster={post.attachment_preview || undefined}
-                      className="w-full aspect-video object-cover rounded-lg border border-base-300"
+                      className="w-full aspect-video object-cover rounded-xl border border-base-300"
                       muted
                       loop
                       autoPlay
                     />
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-lg">
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-xl">
                       <Play className="h-12 w-12 text-white" />
                     </div>
                   </button>
@@ -529,25 +536,30 @@ const Explore = () => {
                   </a>
                 )}
 
-                {/* Post Content */}
-                <div className="space-y-2 mt-3">
-                  <p className="text-sm whitespace-pre-line">{post.content}</p>
-                </div>
+                {/* Funding summary for request posts */}
+                {linked && (
+                  <div className="space-y-3 rounded-xl bg-base-200 p-4">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="badge badge-outline">{categoryLabel(linked.request.category)}</span>
+                      <span className={`badge ${STATUS_BADGE[linked.request.status]}`}>{STATUS_LABELS[linked.request.status]}</span>
+                    </div>
+                    <FundingProgress
+                      target={Number(linked.request.target_amount)}
+                      currency={linked.request.currency}
+                      totals={linked.totals}
+                      compact
+                    />
+                  </div>
+                )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex flex-wrap items-center gap-1 border-t border-base-300 pt-3">
                   <button
                     onClick={() => toggleLike(post.id)}
                     aria-label={liked.includes(post.id) ? 'Unlike' : 'Like'}
-                    className={`btn btn-ghost btn-sm gap-2 ${
-                      liked.includes(post.id) ? 'text-error' : ''
-                    }`}
+                    className={`btn btn-ghost btn-sm gap-2 ${liked.includes(post.id) ? 'text-error' : ''}`}
                   >
-                    <Heart
-                      className={`h-5 w-5 ${
-                        liked.includes(post.id) ? 'fill-error' : ''
-                      }`}
-                    />
+                    <Heart className={`h-5 w-5 ${liked.includes(post.id) ? 'fill-error' : ''}`} />
                     <span>{post.likes_count ?? 0}</span>
                   </button>
 
@@ -561,14 +573,27 @@ const Explore = () => {
                     <span>{post.share_count ?? 0}</span>
                   </button>
 
-                  <button className="btn btn-secondary btn-sm gap-2 text-white" onClick={() => openDonateModal(post.id)}>
-                    <Gift className="h-5 w-5" />
-                    Donate
-                  </button>
+                  <div className="ml-auto">
+                    {post.support_request_id && (!linked || linked.request.status === 'active') ? (
+                      <Link to={`/requests/${post.support_request_id}`} className="btn btn-primary btn-sm gap-2 text-white">
+                        <HandHeart className="h-4 w-4" />
+                        Support this athlete
+                      </Link>
+                    ) : post.support_request_id ? (
+                      <Link to={`/requests/${post.support_request_id}`} className="btn btn-outline btn-sm">
+                        View request
+                      </Link>
+                    ) : isAthlete ? (
+                      <Link to={`/athletes/${post.user_id}`} className="btn btn-outline btn-sm">
+                        View profile
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            </article>
+            );
+          })}
         </div>
 
         {!loadingPosts && hasMorePosts && (
@@ -637,12 +662,11 @@ const Explore = () => {
                   >
                     Comment ({activeVideo.comments_count ?? 0})
                   </button>
-                  <button
-                    className="btn btn-accent btn-sm text-white"
-                    onClick={() => openDonateModal(activeVideo.id)}
-                  >
-                    Donate
-                  </button>
+                  {activeVideo.support_request_id && (
+                    <Link to={`/requests/${activeVideo.support_request_id}`} className="btn btn-accent btn-sm text-white">
+                      Support
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -699,15 +723,13 @@ const Explore = () => {
                 {(comments[commentModalPostId] || []).map((c) => (
                   <div key={c.id} className="rounded-lg border border-base-300 p-3 text-sm space-y-1">
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={
-                            profileMap[c.user_id || '']?.avatar_url ||
-                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.user_id || 'anon'}`
-                          }
-                        />
-                        <AvatarFallback>US</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        id={c.user_id}
+                        name={profileMap[c.user_id || '']?.full_name}
+                        url={profileMap[c.user_id || '']?.avatar_url}
+                        className="h-8 w-8"
+                        textClassName="text-xs"
+                      />
                       <div className="flex flex-col">
                         <p className="font-semibold">
                           {profileMap[c.user_id || '']?.full_name || (c.user_id ? 'Member' : 'Anon')}
@@ -746,118 +768,6 @@ const Explore = () => {
         </div>
       )}
 
-      {donateModalPostId && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={(e) => e.target === e.currentTarget && setDonateModalPostId(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg">
-            <button
-              onClick={() => setDonateModalPostId(null)}
-              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage
-                    src={
-                      profileMap[user?.id || '']?.avatar_url ||
-                      (user ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}` : undefined)
-                    }
-                  />
-                  <AvatarFallback>{(user?.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-semibold">Send a donation</h3>
-                  <p className="text-sm text-muted-foreground">Support this creator with a quick tip.</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="form-control w-full">
-                  <div className="label">
-                    <span className="label-text">Amount (₹)</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="1"
-                    max={MAX_DONATION}
-                    step="0.01"
-                    className="input input-bordered w-full"
-                    placeholder="Enter amount"
-                    value={donateAmount}
-                    onChange={(e) => setDonateAmount(e.target.value)}
-                  />
-                </label>
-                <label className="form-control w-full">
-                  <div className="label">
-                    <span className="label-text">Message (optional)</span>
-                  </div>
-                  <textarea
-                    className="textarea textarea-bordered w-full"
-                    rows={3}
-                    placeholder="Share a note with your donation"
-                    maxLength={MAX_DONATION_MESSAGE}
-                    value={donateMessage}
-                    onChange={(e) => setDonateMessage(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => setDonateModalPostId(null)}>Cancel</button>
-                <button
-                  className="btn btn-primary btn-sm text-white"
-                  onClick={submitDonation}
-                  disabled={donateSubmitting}
-                >
-                  {donateSubmitting ? 'Saving...' : 'Donate'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {thankYouInfo && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={(e) => e.target === e.currentTarget && setThankYouInfo(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative bg-base-100 rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
-            <button
-              onClick={() => setThankYouInfo(null)}
-              className="btn btn-circle btn-sm absolute top-3 right-3 bg-base-100 text-base-content"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="p-6 space-y-4 text-center">
-              <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl font-bold text-white shadow-lg border border-base-300">
-                  🎊
-                </div>
-              </div>
-              <h3 className="text-2xl font-semibold">Thank you, {thankYouInfo.name}!</h3>
-              <p className="text-sm text-muted-foreground">
-                We recorded your ₹{thankYouInfo.amount} pledge. Online payments are not connected yet, so no money has been charged.
-              </p>
-              <div className="bg-base-200 rounded-xl p-3 text-sm text-base-content border border-base-300">
-                <p className="font-semibold">Message</p>
-                <p className="text-muted-foreground">{donateMessage?.trim() || 'No message provided.'}</p>
-              </div>
-              <button className="btn btn-primary text-white w-full" onClick={() => setThankYouInfo(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };

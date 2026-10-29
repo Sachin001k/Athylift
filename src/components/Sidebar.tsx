@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
-import { Home, User, FileText, Plus, Info, FileQuestion, Shield, Lock, HeartHandshake } from 'lucide-react';
+import { Home, User, FileText, Plus, Info, FileQuestion, Shield, HeartHandshake, LayoutDashboard, Trophy, HandCoins, Megaphone } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -7,22 +8,31 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+  const { user, role } = useAuth();
+
   const menuItems = [
-    { icon: Home, label: 'Feed', path: '/explore' },
-    { icon: User, label: 'Profile', path: '/profile' },
-    { icon: HeartHandshake, label: 'Donations', path: '/donations' },
+    ...(user ? [{ icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' }] : []),
+    { icon: Home, label: 'Feed', path: '/feed' },
+    { icon: Trophy, label: 'Athletes', path: '/athletes' },
+    { icon: HandCoins, label: 'Funding requests', path: '/requests' },
+    ...(role === 'donor' ? [{ icon: HeartHandshake, label: 'My support', path: '/donations' }] : []),
+    ...(user ? [{ icon: User, label: 'Account', path: '/profile' }] : []),
   ];
 
-  const contentItems = [
-    { icon: Plus, label: 'Post', path: '/add-post' },
-    { icon: FileText, label: 'My Posts', path: '/my-posts' },
-  ];
+  const contentItems = user
+    ? [
+        ...(role === 'athlete' ? [{ icon: Megaphone, label: 'New support request', path: '/requests/new' }] : []),
+        { icon: Plus, label: 'Share an update', path: '/add-post' },
+        { icon: FileText, label: 'My posts', path: '/my-posts' },
+      ]
+    : [];
 
   const metaItems = [
+    { icon: Info, label: 'How it works', path: '/how-it-works' },
     { icon: Info, label: 'About us', path: '/about' },
+    { icon: FileQuestion, label: 'FAQs', path: '/faq' },
     { icon: FileQuestion, label: 'Terms & Conditions', path: '/terms' },
     { icon: Shield, label: 'Disclaimer', path: '/disclaimer' },
-    { icon: FileQuestion, label: 'FAQs', path: '/faq' },
   ];
 
   return (
@@ -62,8 +72,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             ))}
           </div>
 
+          {contentItems.length > 0 && (
           <div>
-            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Content Management</h3>
+            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Create</h3>
             <div className="space-y-1">
               {contentItems.map((item) => (
                 <NavLink
@@ -84,9 +95,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               ))}
             </div>
           </div>
+          )}
 
           <div>
-            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Meta</h3>
+            <h3 className="px-4 mb-2 text-sm font-semibold text-base-content/60">Learn</h3>
             <div className="space-y-1">
               {metaItems.map((item) => (
                 <NavLink

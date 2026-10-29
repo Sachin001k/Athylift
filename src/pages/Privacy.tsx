@@ -12,7 +12,7 @@ const Privacy = () => {
               <Shield className="h-12 w-12 text-primary" />
               <div>
                 <h1 className="text-3xl font-brand tracking-wide mb-2">Privacy Policy</h1>
-                <p className="font-serif">We understand the importance of privacy, especially for sensitive topics.</p>
+                <p className="font-serif">How Athylift protects the information athletes and donors share with us.</p>
               </div>
             </div>
           </div>
@@ -32,10 +32,10 @@ const Privacy = () => {
                   <div className="font-serif">
                     <h2 className="card-title mb-3">Information We Collect</h2>
                     <ul className="list-disc list-inside space-y-2">
-                      <li>Personal details: name, email address, contact information (optional during account creation).</li>
-                      <li>Profile information: posts, replies, media uploads, parenting topics followed.</li>
+                      <li>Account details: name, email address, and whether you joined as an athlete or a donor.</li>
+                      <li>Athlete profile information: sport, achievements, goals, posts, and photos or videos you upload.</li>
                       <li>Technical data: device type, browser version, IP address, and usage patterns.</li>
-                      <li>Anonymous insights shared via posts or responses.</li>
+                      <li>Support activity: support requests athletes create and pledges donors record.</li>
                     </ul>
                   </div>
                 </div>
@@ -50,9 +50,9 @@ const Privacy = () => {
                     <h2 className="card-title mb-3">How We Use Your Information</h2>
                     <ul className="list-disc list-inside space-y-2">
                       <li>Provide a secure, customized experience on the platform.</li>
-                      <li>Enable features like personalized feeds, private messages, or anonymous posts.</li>
+                      <li>Show athlete profiles, posts and support requests to donors and the community.</li>
                       <li>Monitor content safety and community health.</li>
-                      <li>Suggest therapist connections if a post shows signs of distress (with user consent).</li>
+                      <li>Help verify athletes and keep fundraising on the platform responsible.</li>
                     </ul>
                   </div>
                 </div>
@@ -82,7 +82,7 @@ const Privacy = () => {
                   <div className="font-serif">
                     <h2 className="card-title mb-3">Data Protection</h2>
                     <ul className="list-disc list-inside space-y-2">
-                      <li>End-to-end encryption for sensitive content.</li>
+                      <li>Encrypted connections (HTTPS) for all data sent to and from Athylift.</li>
                       <li>Routine security audits and vulnerability assessments.</li>
                       <li>Strict access control policies.</li>
                     </ul>
@@ -98,7 +98,8 @@ const Privacy = () => {
                   <li>Access or update your profile data.</li>
                   <li>Delete posts or your entire account.</li>
                   <li>Request complete removal of your personal data.</li>
-                  <li>Opt out of communication or anonymize further.</li>
+                  <li>Opt out of non-essential communication.</li>
+                  <li>Athletes under 18 can keep their location and exact age hidden from public view.</li>
                 </ul>
               </div>
             </div>

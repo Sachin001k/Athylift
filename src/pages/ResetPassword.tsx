@@ -49,7 +49,7 @@ const ResetPassword = () => {
       return;
     }
     toast({ title: 'Password updated', description: 'You are now logged in.' });
-    navigate('/explore', { replace: true });
+    navigate('/dashboard', { replace: true });
   };
 
   return (

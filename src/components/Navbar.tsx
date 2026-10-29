@@ -1,8 +1,7 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
+import { useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface NavbarProps {
   // Pages with a sidebar (Layout) toggle it here; other pages get a built-in mobile menu.
@@ -19,12 +19,11 @@ interface NavbarProps {
 }
 
 const PAGE_LINKS = [
-  { to: '/', label: 'Home' },
+  { to: '/athletes', label: 'Athletes' },
+  { to: '/feed', label: 'Feed' },
+  { to: '/requests', label: 'Funding requests' },
+  { to: '/how-it-works', label: 'How it works' },
   { to: '/about', label: 'About' },
-  { to: '/terms', label: 'Terms' },
-  { to: '/privacy', label: 'Privacy' },
-  { to: '/faq', label: 'FAQ' },
-  { to: '/contact', label: 'Contact' },
 ];
 
 type NotificationItem = {
@@ -38,30 +37,19 @@ type NotificationItem = {
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { toast } = useToast();
   // Shared across pages, so the header keeps its state while navigating.
   const {
     user,
     loading: authLoading,
     avatarUrl: profileAvatar,
+    role,
     unreadCount: notificationCount,
     setUnreadCount: setNotificationCount,
   } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
-
-  useEffect(() => {
-    setSearchQuery(searchParams.get('q') ?? '');
-  }, [searchParams]);
-
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    navigate(query ? `/explore?q=${encodeURIComponent(query)}` : '/explore');
-  };
-
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
@@ -120,8 +108,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-base-100/90 backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {onMenuClick ? (
             <button
               onClick={onMenuClick}
@@ -140,7 +128,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               <DropdownMenuContent align="start" className="bg-base-100 text-base-content border-base-300">
                 {user && (
                   <DropdownMenuItem asChild>
-                    <Link to="/explore" className="text-base-content font-semibold">Feed</Link>
+                    <Link to="/dashboard" className="text-base-content">Dashboard</Link>
                   </DropdownMenuItem>
                 )}
                 {PAGE_LINKS.map((item) => (
@@ -151,42 +139,42 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
+          <Link
+            to="/"
+            className="flex items-center gap-2"
+            aria-label="Athylift home"
+            onClick={() => {
+              // Already home: the route doesn't change, so scroll back to the top ourselves.
+              if (pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
-            <span className="text-2xl font-brand text-primary tracking-wide">Athylift</span>
+            <span className="hidden min-[380px]:inline text-xl sm:text-2xl font-brand font-bold uppercase text-primary tracking-wide">Athylift</span>
           </Link>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-6 font-medium text-base-content">
-          {user && (
-            <Link to="/explore" className="text-primary font-semibold hover:opacity-80 transition-opacity">Feed</Link>
-          )}
-          {PAGE_LINKS.map((item) => (
-            <Link key={item.to} to={item.to} className="hover:text-primary transition-colors">{item.label}</Link>
+        <nav className="hidden lg:flex flex-1 justify-center items-center gap-7 font-medium text-base-content">
+          {(user ? [{ to: '/dashboard', label: 'Dashboard' }, ...PAGE_LINKS] : PAGE_LINKS).map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `relative py-1 transition-colors hover:text-primary after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-primary after:transition-transform after:origin-left ${
+                  isActive ? 'text-primary after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
           ))}
         </nav>
 
-        <div className="hidden flex-1 max-w-md mx-8 md:block">
-          <form className="relative" role="search" onSubmit={handleSearch}>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search posts in the Athylift community"
-              aria-label="Search posts"
-              className="input input-bordered w-full pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              maxLength={100}
-            />
-          </form>
-        </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="btn btn-ghost btn-circle text-base-content">
+              <button className="btn btn-ghost btn-circle btn-sm sm:btn-md text-base-content" aria-label="Change theme">
                 {getThemeIcon()}
               </button>
             </DropdownMenuTrigger>
@@ -241,28 +229,37 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             // Same size as the avatar button, so nothing shifts while the session is checked.
             <div className="h-12 w-12" aria-hidden="true" />
           ) : !user ? (
-            <div className="flex items-center gap-2">
-              <Link to="/login" className="btn btn-ghost">Login</Link>
-              <Link to="/register" className="btn btn-primary text-white">Sign Up</Link>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link to="/login" className="btn btn-ghost btn-sm sm:btn-md">Log in</Link>
+              <Link to="/register" className="btn btn-primary btn-sm sm:btn-md text-white">Sign up</Link>
             </div>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="btn btn-ghost btn-circle avatar">
-                  <Avatar>
-                    <AvatarImage
-                      src={
-                        profileAvatar ||
-                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id || 'athlete'}`
-                      }
-                    />
-                    <AvatarFallback>{(user.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                <button className="btn btn-ghost btn-circle p-0" aria-label="Account menu">
+                  <UserAvatar
+                    id={user.id}
+                    name={(user.user_metadata?.full_name as string | undefined) || user.email}
+                    url={profileAvatar}
+                  />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="text-base-content">Profile</Link>
+                  <Link to="/dashboard" className="text-base-content">Dashboard</Link>
+                </DropdownMenuItem>
+                {role === 'athlete' && (
+                  <DropdownMenuItem asChild>
+                    <Link to={`/athletes/${user.id}`} className="text-base-content">My public profile</Link>
+                  </DropdownMenuItem>
+                )}
+                {role === 'donor' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/donations" className="text-base-content">My support</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="text-base-content">Account & photos</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} className="text-base-content">
                   Logout

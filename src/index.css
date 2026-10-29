@@ -1,96 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@font-face {
-  font-family: 'Avenir Black';
-  src: local('Avenir Black'), local('Avenir 95 Black'), local('Avenir Next Heavy');
-  font-weight: 900;
-  font-style: normal;
-}
 
 @layer base {
   :root,
   :root[data-theme="light"],
   [data-theme="light"] {
-    --background: 210 4% 80%; /* Chinese Silver */
-    --foreground: 0 0% 0%; /* Black */
+    --background: 0 0% 100%;
+    --foreground: 215 35% 13%; /* ink #16202E */
 
-    --card: 210 4% 80%; /* Chinese Silver */
-    --card-foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 35% 13%;
 
-    --popover: 210 4% 80%;
-    --popover-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 35% 13%;
 
-    --primary: 201 100% 35%; /* Star Command Blue */
+    --primary: 201 100% 35%; /* #0077B5 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 196 100% 43%; /* Rich Electric Blue */
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 221 57% 25%; /* navy-700 #1C3366 */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 2% 53%; /* Taupe Gray */
-    --muted-foreground: 0 0% 0%;
+    --muted: 213 33% 95%; /* slate-100 #EEF2F7 */
+    --muted-foreground: 215 19% 35%;
 
-    --accent: 196 100% 43%; /* Rich Electric Blue */
-    --accent-foreground: 0 0% 0%;
+    --accent: 22 100% 55%; /* #FF6B1A */
+    --accent-foreground: 215 35% 13%;
 
-    --destructive: 0 72% 45%; /* Red, so errors stand out in every theme */
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 2% 53%;
-    --input: 210 2% 53%;
+    --border: 214 25% 87%;
+    --input: 214 25% 80%;
     --ring: 201 100% 35%;
 
     --radius: 1rem;
 
-    --sidebar-background: 210 4% 20%; /* Dark Charcoal */
-    --sidebar-foreground: 210 4% 80%;
-    --sidebar-primary: 201 100% 35%;
-    --sidebar-primary-foreground: 210 4% 80%;
-    --sidebar-accent: 210 2% 53%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 210 2% 53%;
-    --sidebar-ring: 196 100% 43%;
+    --sidebar-background: 222 60% 15%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 22 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 221 57% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 221 57% 25%;
+    --sidebar-ring: 22 100% 55%;
   }
 
   [data-theme="dark"],
   .dark {
-    --background: 0 0% 0%; /* Black */
-    --foreground: 210 4% 80%; /* Chinese Silver */
+    --background: 222 47% 9%;
+    --foreground: 214 33% 93%;
 
-    --card: 210 4% 20%; /* Dark Charcoal */
-    --card-foreground: 210 4% 80%;
+    --card: 222 46% 12%;
+    --card-foreground: 214 33% 93%;
 
-    --popover: 210 4% 20%;
-    --popover-foreground: 210 4% 80%;
+    --popover: 222 46% 12%;
+    --popover-foreground: 214 33% 93%;
 
-    --primary: 201 100% 35%;
+    --primary: 200 90% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 196 100% 43%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 222 48% 45%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 2% 53%;
-    --muted-foreground: 210 4% 80%;
+    --muted: 222 36% 22%;
+    --muted-foreground: 214 20% 72%;
 
-    --accent: 196 100% 43%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 22 100% 65%;
+    --accent-foreground: 222 47% 9%;
 
-    --destructive: 0 72% 45%; /* Red, so errors stand out in every theme */
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 2% 53%;
-    --input: 210 2% 53%;
-    --ring: 201 100% 35%;
-    --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 210 4% 80%;
-    --sidebar-primary: 201 100% 35%;
-    --sidebar-primary-foreground: 210 4% 80%;
-    --sidebar-accent: 210 4% 20%;
-    --sidebar-accent-foreground: 210 4% 80%;
-    --sidebar-border: 210 4% 20%;
-    --sidebar-ring: 196 100% 43%;
+    --border: 222 36% 22%;
+    --input: 222 36% 28%;
+    --ring: 200 90% 40%;
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 214 33% 93%;
+    --sidebar-primary: 200 90% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 36% 22%;
+    --sidebar-accent-foreground: 214 33% 93%;
+    --sidebar-border: 222 36% 22%;
+    --sidebar-ring: 200 90% 40%;
   }
 
   [data-theme="sport"],
@@ -142,10 +135,52 @@
   }
 
   body {
-    @apply bg-background text-foreground font-roboto font-light;
+    @apply bg-background text-foreground font-sans;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-normal;
+    @apply font-semibold;
+  }
+}
+
+/* Scroll-reveal: elements start hidden only when JS has marked them (see Reveal.tsx). */
+@layer utilities {
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+  .hover-lift {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 40px -18px rgb(15 30 61 / 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* iOS Safari zooms into any form field under 16px when it is tapped; keep fields at 16px on touch-size screens. */
+@media (max-width: 1024px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }

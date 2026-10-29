@@ -1,222 +1,405 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Shield, Users, Target, Star, MessageCircle, Lock } from 'lucide-react';
+import {
+  Accessibility,
+  ArrowRight,
+  Dumbbell,
+  Eye,
+  GraduationCap,
+  HandHeart,
+  Medal,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
+import { Reveal } from '@/components/Reveal';
+import { RequestCard } from '@/components/fundraising/RequestCard';
+import { supabase } from '@/lib/supabaseClient';
+import {
+  AthleteSummary,
+  fetchAthletes,
+  fetchTotals,
+  REQUEST_COLUMNS,
+  RequestTotals,
+  SupportRequest,
+} from '@/lib/athylift';
+
+const steps = [
+  {
+    icon: Trophy,
+    title: 'Athletes share their stories',
+    text: 'Athletes create profiles, showcase their achievements, explain their goals, and publish posts detailing the equipment, training, coaching, or academy fees they need help funding.',
+  },
+  {
+    icon: Search,
+    title: 'Donors discover and connect',
+    text: 'Donors explore athlete profiles and support requests, learn about individual goals, and identify athletes whose journeys they would like to support.',
+  },
+  {
+    icon: HandHeart,
+    title: 'Support sporting dreams',
+    text: 'Donors contribute towards eligible funding needs, helping athletes access resources and opportunities that may otherwise be out of reach.',
+  },
+];
+
+const values = [
+  { icon: Accessibility, title: 'Accessibility', text: 'Making sporting opportunities more accessible to athletes facing financial barriers.' },
+  { icon: Users, title: 'Inclusivity', text: 'Supporting athletes across different sports, backgrounds, and communities.' },
+  { icon: Eye, title: 'Transparency', text: "Clearly communicating athletes' needs, fundraising goals, and intended use of support." },
+  { icon: HandHeart, title: 'Community', text: 'Building meaningful connections between athletes, donors, and supporters.' },
+  { icon: Sparkles, title: 'Empowerment', text: 'Helping athletes take ownership of their journeys and pursue their sporting ambitions.' },
+  { icon: ShieldCheck, title: 'Integrity', text: 'Encouraging responsible fundraising, appropriate verification, and accountable use of contributions.' },
+];
+
+const needs = [
+  { icon: Dumbbell, label: 'Equipment', top: '6%', left: '6%' },
+  { icon: Medal, label: 'Coaching', top: '16%', left: '66%' },
+  { icon: Trophy, label: 'Training', top: '80%', left: '2%' },
+  { icon: GraduationCap, label: 'Academy fees', top: '86%', left: '56%' },
+];
+
+// Decorative running track: lanes slowly circling, a floating request preview and the needs athletes fund.
+const TrackGraphic = () => (
+  <div className="relative mx-auto aspect-square w-full max-w-md" aria-hidden="true">
+    <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full">
+      <defs>
+        <linearGradient id="lane" x1="0" x2="1">
+          <stop offset="0" stopColor="#FF6B1A" stopOpacity="0.95" />
+          <stop offset="1" stopColor="#FF6B1A" stopOpacity="0.15" />
+        </linearGradient>
+      </defs>
+      {[0, 1, 2, 3, 4].map((lane) => (
+        <ellipse
+          key={lane}
+          cx="200"
+          cy="200"
+          rx={175 - lane * 26}
+          ry={125 - lane * 18}
+          fill="none"
+          stroke={lane === 0 ? 'url(#lane)' : 'rgba(255,255,255,0.22)'}
+          strokeWidth={lane === 0 ? 10 : 2}
+          strokeLinecap="round"
+          strokeDasharray={lane === 0 ? '420 260' : '6 10'}
+          className="animate-[spin_40s_linear_infinite]"
+          style={{
+            transformOrigin: '200px 200px',
+            animationDirection: lane % 2 ? 'reverse' : 'normal',
+            animationDuration: `${24 + lane * 8}s`,
+          }}
+        />
+      ))}
+    </svg>
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="w-64 animate-float rounded-2xl bg-white p-5 text-left text-[#16202E] shadow-2xl">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#B8430A]">Support request</p>
+        <p className="mt-1 font-brand text-2xl font-bold leading-tight">Every need, shown in the open</p>
+        <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-[#EEF2F7]">
+          <div className="h-full w-2/3 origin-left animate-grow rounded-full bg-gradient-to-r from-[#FF6B1A] to-[#C2410C]" />
+        </div>
+        <p className="mt-2 text-xs text-[#16202E]/80">Target, amount raised and intended use on every request.</p>
+      </div>
+    </div>
+    {needs.map((need, idx) => (
+      <div
+        key={need.label}
+        className="absolute flex animate-float items-center gap-1.5 rounded-full bg-[#1C3366] px-3 py-1.5 text-xs font-semibold text-white shadow-lg ring-1 ring-white/25"
+        style={{ top: need.top, left: need.left, animationDelay: `${idx * 0.8}s` }}
+      >
+        <need.icon className="h-3.5 w-3.5 text-[#FF8A4C]" />
+        {need.label}
+      </div>
+    ))}
+  </div>
+);
 
 const Home = () => {
+  const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [athletes, setAthletes] = useState<Record<string, AthleteSummary>>({});
+  const [totals, setTotals] = useState<Record<string, RequestTotals>>({});
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  // Real, live requests only; nothing on this page is made up.
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('support_requests')
+        .select(REQUEST_COLUMNS)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(3);
+      const rows = (data as SupportRequest[]) || [];
+      const [athleteMap, totalMap] = await Promise.all([
+        fetchAthletes(rows.map((r) => r.athlete_id)),
+        fetchTotals(rows.map((r) => r.id)),
+      ]);
+      setRequests(rows);
+      setAthletes(athleteMap);
+      setTotals(totalMap);
+      setLoadingRequests(false);
+    };
+    load();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-base-200 text-base-content">
+    <div className="min-h-screen bg-base-100 text-base-content">
       <Navbar />
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-secondary py-20 px-4 text-white">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,rgba(0,119,181,0.6),transparent),radial-gradient(circle_at_80%_0%,rgba(0,160,220,0.5),transparent)]" />
-        <div className="container mx-auto relative text-center">
-          <h1 className="text-5xl md:text-7xl font-brand tracking-wide mb-6">
-            Athylift: Trusted Space for Every Parent
-          </h1>
-          <p className="text-xl md:text-2xl font-serif max-w-3xl mx-auto mb-10">
-            Welcome to Athylift, a trusted online community created for parents navigating overwhelming situations. Share anonymously or openly, learn, and heal with the support of people who understand.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90 shadow-lg shadow-primary/30">
-              Join Athylift
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link to="/explore" className="btn btn-lg bg-secondary text-white border-none hover:bg-secondary/90 shadow-lg shadow-secondary/30">
-              Explore Feed
-            </Link>
-            <Link to="/about" className="btn btn-lg btn-outline border-base-100 text-white hover:bg-base-100 hover:text-primary">
-              Learn More
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 px-4">
-        <div className="container mx-auto grid gap-8 md:grid-cols-2">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body space-y-4">
-              <div className="flex items-center gap-3">
-                <Shield className="h-8 w-8 text-primary" />
-                <h2 className="text-3xl font-semibold">Our Mission</h2>
-              </div>
-              <p className="font-serif text-lg leading-relaxed">
-                To build a safe, judgment-free space for parents to express challenges, seek advice, and find emotional comfort—anonymously or openly—through shared experiences and professional insights.
-              </p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body space-y-4">
-              <div className="flex items-center gap-3">
-                <Target className="h-8 w-8 text-secondary" />
-                <h2 className="text-3xl font-semibold">How It Works</h2>
-              </div>
-              <ul className="space-y-2 font-serif">
-                <li>Ask questions anonymously or with your profile—no judgment.</li>
-                <li>Get real feedback from parents who have walked similar paths.</li>
-                <li>Therapists can join conversations or offer direct support.</li>
-                <li>Private help is suggested when distress signals appear.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-base-100 py-16 px-4">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card bg-base-200 shadow-md">
-              <div className="card-body">
-                <h4 className="card-title">Our Values</h4>
-                <ul className="space-y-2 font-serif">
-                  <li>Empathy first—every journey is unique.</li>
-                  <li>Privacy and safety at the core.</li>
-                  <li>Support over judgment.</li>
-                  <li>Guided help when needed.</li>
-                </ul>
-              </div>
-            </div>
-            <div className="card bg-base-200 shadow-md">
-              <div className="card-body">
-                <h4 className="card-title">Services</h4>
-                <ul className="space-y-2 font-serif">
-                  <li>Branding</li>
-                  <li>Design</li>
-                  <li>Marketing</li>
-                  <li>Advertisement</li>
-                </ul>
-              </div>
-            </div>
-            <div className="card bg-base-200 shadow-md">
-              <div className="card-body">
-                <h4 className="card-title">Legal & Support</h4>
-                <ul className="space-y-2 font-serif">
-                  <li>Terms of use</li>
-                  <li>Privacy policy</li>
-                  <li>Cookie policy</li>
-                  <li>Disclaimers</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="feed-preview" className="py-16 px-4 bg-base-200">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <div>
-              <p className="text-sm text-muted-foreground">Live community previews</p>
-              <h3 className="text-3xl font-semibold text-primary">Explore Feed</h3>
-            </div>
-            <div className="flex gap-3">
-              <Link to="/explore" className="btn bg-primary text-white border-none hover:bg-primary/90 shadow-lg shadow-primary/30">
-                Go to Feed
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-[#0F1E3D] text-white">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'repeating-linear-gradient(115deg, #fff 0 2px, transparent 2px 90px)' }}
+        />
+        <div className="container relative mx-auto grid items-center gap-12 px-4 py-16 lg:grid-cols-2 lg:py-24">
+          <div>
+            <p className="inline-flex animate-rise-in items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#FF6B1A]" />
+              For athletes facing financial barriers
+            </p>
+            <h1 className="mt-6 font-brand text-[2.6rem] font-bold uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+              <span className="block animate-rise-in" style={{ animationDelay: '0.1s' }}>Empowering Athletes.</span>
+              <span className="block animate-rise-in text-[#FF8A4C]" style={{ animationDelay: '0.25s' }}>
+                Breaking Financial Barriers.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-xl animate-rise-in text-lg text-white/90" style={{ animationDelay: '0.4s' }}>
+              Athylift connects underprivileged athletes with people who believe in their potential. Discover inspiring sporting journeys, support essential equipment and training needs, and help athletes take the next step towards their dreams.
+            </p>
+            <div className="mt-8 flex animate-rise-in flex-col gap-3 sm:flex-row" style={{ animationDelay: '0.55s' }}>
+              <Link
+                to="/athletes"
+                className="group btn btn-lg border-none bg-[#FF6B1A] text-[#0F1E3D] shadow-lg shadow-[#FF6B1A]/30 hover:bg-[#FF8A4C]"
+              >
+                Explore athletes
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link to="/register?role=donor" className="btn btn-lg btn-outline border-white text-white hover:border-white hover:bg-white hover:text-[#0F1E3D]">
+                Become a donor
               </Link>
             </div>
+            <p className="mt-5 animate-rise-in" style={{ animationDelay: '0.7s' }}>
+              <Link to="/register?role=athlete" className="link font-medium text-white/90 hover:text-[#FF8A4C]">
+                Get support as an athlete →
+              </Link>
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                title: 'Late-night parenting win',
-                preview: 'Finally got 4 hours of sleep in a row—here is what helped...',
-              },
-              {
-                title: 'Balancing work and toddlers',
-                preview: 'Remote work hacks that kept my toddler happy during calls.',
-              },
-              {
-                title: 'Anonymous question',
-                preview: 'Is it normal to feel overwhelmed with two kids under 3?',
-              },
-            ].map((card, idx) => (
-              <div key={idx} className="card bg-base-100 shadow-lg border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title">{card.title}</h4>
-                  <p className="font-serif text-base-content/80 line-clamp-3">{card.preview}</p>
-                  <div className="card-actions justify-end">
-                    <Link to="/explore" className="btn btn-link text-primary p-0">Open feed</Link>
+          <div className="animate-rise-in" style={{ animationDelay: '0.3s' }}>
+            <TrackGraphic />
+          </div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="px-4 py-20">
+        <div className="container mx-auto grid items-center gap-10 lg:grid-cols-5">
+          <Reveal className="lg:col-span-2">
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">Our mission</p>
+            <h2 className="mt-3 font-brand text-4xl font-bold uppercase leading-tight sm:text-5xl">
+              Talent shouldn't depend on money
+            </h2>
+          </Reveal>
+          <Reveal className="space-y-4 text-lg leading-relaxed text-base-content/90 lg:col-span-3" delay={120}>
+            <p>
+              Athylift exists to make sporting opportunities more accessible to athletes facing financial barriers. We believe that talent, determination, and passion deserve an opportunity to grow, regardless of an athlete's financial circumstances.
+            </p>
+            <p>
+              By connecting athletes in need with supportive donors, we aim to bridge the gap between sporting ambition and the resources required to pursue it. From essential equipment to coaching and academy fees, Athylift provides a platform where athletes can share their journeys and seek meaningful support.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-base-200 px-4 py-20">
+        <div className="container mx-auto">
+          <Reveal className="mb-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">How it works</p>
+            <h2 className="mt-3 font-brand text-4xl font-bold uppercase sm:text-5xl">Three steps from need to support</h2>
+          </Reveal>
+          <ol className="grid gap-8 md:grid-cols-3">
+            {steps.map((step, idx) => (
+              <Reveal as="li" key={step.title} delay={idx * 150}>
+                <div className="group h-full rounded-2xl bg-base-100 p-6 shadow-md ring-1 ring-base-300 hover-lift">
+                  <div className="flex items-center gap-4">
+                    <span className="font-brand text-6xl font-bold leading-none text-primary">0{idx + 1}</span>
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-white transition-transform group-hover:-rotate-6 group-hover:scale-110">
+                      <step.icon className="h-6 w-6" />
+                    </span>
                   </div>
+                  <h3 className="mt-5 text-xl font-semibold">{step.title}</h3>
+                  <p className="mt-2 text-base-content/85">{step.text}</p>
                 </div>
-              </div>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Live requests */}
+      <section className="px-4 py-20">
+        <div className="container mx-auto">
+          <Reveal className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-primary">Funding requests</p>
+              <h2 className="mt-3 font-brand text-4xl font-bold uppercase sm:text-5xl">Athletes asking for support now</h2>
+            </div>
+            <Link to="/requests" className="group btn btn-outline btn-primary">
+              Browse funding requests
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Reveal>
+          {loadingRequests ? (
+            <div className="flex justify-center py-10"><span className="loading loading-spinner loading-lg text-primary" /></div>
+          ) : requests.length === 0 ? (
+            <Reveal className="rounded-2xl border-2 border-dashed border-base-300 p-10 text-center">
+              <p className="text-lg font-semibold">No open requests yet.</p>
+              <p className="mt-1 text-base-content/80">Athletes' support requests will appear here as soon as they're posted.</p>
+              <Link to="/register?role=athlete" className="btn btn-primary mt-5">Create an athlete profile</Link>
+            </Reveal>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {requests.map((request, idx) => (
+                <Reveal key={request.id} delay={idx * 120} className="rounded-2xl hover-lift">
+                  <RequestCard request={request} athlete={athletes[request.athlete_id]} totals={totals[request.id]} />
+                </Reveal>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Values */}
+      <section className="bg-[#0F1E3D] px-4 py-20 text-white">
+        <div className="container mx-auto">
+          <Reveal className="mb-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#FF8A4C]">Our values</p>
+            <h2 className="mt-3 font-brand text-4xl font-bold uppercase sm:text-5xl">What we stand for</h2>
+          </Reveal>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {values.map((value, idx) => (
+              <Reveal key={value.title} delay={(idx % 3) * 120}>
+                <div className="group h-full rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-[#FF6B1A]/60">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FF6B1A] text-[#0F1E3D] transition-transform group-hover:rotate-6 group-hover:scale-110">
+                    <value.icon className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-4 text-xl font-semibold">{value.title}</h3>
+                  <p className="mt-2 text-white/85">{value.text}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="card bg-base-100 shadow-xl">
-              <div className="card-body">
-                <div className="flex items-center gap-3 mb-3">
-                  <Users className="h-6 w-6 text-primary" />
-                  <h3 className="text-2xl font-semibold">What Makes Us Unique?</h3>
-                </div>
-                <p className="font-serif leading-relaxed">
-                  Freedom to ask or answer anonymously, a focus on emotional support, and the option to connect with licensed therapists when needed—without compromising your privacy.
-                </p>
+      {/* Audience paths */}
+      <section className="px-4 py-20">
+        <div className="container mx-auto grid gap-6 md:grid-cols-2">
+          <Reveal>
+            <div className="group relative h-full overflow-hidden rounded-3xl bg-secondary p-8 text-white hover-lift">
+              <Trophy className="absolute -bottom-6 -right-6 h-40 w-40 text-white/10 transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-110" />
+              <p className="text-sm font-semibold uppercase tracking-widest text-[#FF8A4C]">For athletes</p>
+              <h3 className="mt-2 font-brand text-4xl font-bold uppercase">Share your journey</h3>
+              <p className="mt-3 max-w-md text-white/90">
+                Build a profile, share your achievements and goals, and post what you need help funding: equipment, coaching, training or academy fees.
+              </p>
+              <div className="relative mt-6 flex flex-wrap gap-3">
+                <Link to="/register?role=athlete" className="btn border-none bg-[#FF6B1A] text-[#0F1E3D] hover:bg-[#FF8A4C]">Create an athlete profile</Link>
+                <Link to="/requests/new" className="btn btn-outline border-white text-white hover:border-white hover:bg-white hover:text-secondary">Post a support request</Link>
               </div>
             </div>
-            <div className="card bg-base-100 shadow-xl">
-              <div className="card-body">
-                <div className="flex items-center gap-3 mb-3">
-                  <Lock className="h-6 w-6 text-secondary" />
-                  <h3 className="text-2xl font-semibold">Privacy First</h3>
-                </div>
-                <p className="font-serif leading-relaxed">
-                  End-to-end safeguards protect sensitive content. You can update or delete posts anytime, anonymize further, and request complete removal of your data.
-                </p>
+          </Reveal>
+          <Reveal delay={150}>
+            <div className="group relative h-full overflow-hidden rounded-3xl bg-primary p-8 text-white hover-lift">
+              <HandHeart className="absolute -bottom-6 -right-6 h-40 w-40 text-white/10 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+              <p className="text-sm font-semibold uppercase tracking-widest text-white">For donors</p>
+              <h3 className="mt-2 font-brand text-4xl font-bold uppercase">Back real potential</h3>
+              <p className="mt-3 max-w-md text-white">
+                Explore athletes and their support requests, see exactly what each contribution is for, and help them take the next step in their sport.
+              </p>
+              <div className="relative mt-6 flex flex-wrap gap-3">
+                <Link to="/requests" className="btn border-none bg-white text-primary hover:bg-white/90">Browse funding requests</Link>
+                <Link to="/register?role=donor" className="btn btn-outline border-white text-white hover:border-white hover:bg-white hover:text-primary">Become a donor</Link>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-primary to-secondary py-16 px-4 text-white">
-        <div className="container mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-brand tracking-wide mb-4">Ready to feel supported?</h2>
-          <p className="text-xl font-serif max-w-3xl mx-auto mb-8">
-            Whether you're here to ask, support, or simply listen—Athylift welcomes you.
+      {/* Final CTA */}
+      <section className="bg-base-200 px-4 py-20">
+        <Reveal className="container mx-auto text-center">
+          <h2 className="font-brand text-4xl font-bold uppercase sm:text-6xl">
+            Be part of the <span className="text-primary">next podium</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-base-content/85">
+            Join Athylift as an athlete looking for support, or as a donor ready to help one take the next step.
           </p>
-          <Link to="/register" className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90">
-            Get Started Free
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
-        </div>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link to="/register" className="group btn btn-lg btn-primary">
+              Sign up
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link to="/login" className="btn btn-lg btn-outline">Log in</Link>
+          </div>
+        </Reveal>
       </section>
 
-      <footer className="bg-base-300 py-16 px-4">
+      <footer className="bg-[#0F1E3D] px-4 py-16 text-white">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div>
-              <h3 className="font-semibold text-lg mb-4 text-base-content">Services</h3>
-              <ul className="space-y-2 font-serif">
-                <li><Link to="/features" className="link link-hover text-base-content">Branding</Link></li>
-                <li><Link to="/features" className="link link-hover text-base-content">Design</Link></li>
-                <li><Link to="/pricing" className="link link-hover text-base-content">Marketing</Link></li>
-                <li><Link to="/features" className="link link-hover text-base-content">Advertisement</Link></li>
-              </ul>
+              <p className="font-brand text-3xl font-bold uppercase">Athylift</p>
+              <p className="mt-3 text-white/80">
+                Connecting underprivileged athletes with donors who help fund equipment, coaching, training and academy fees.
+              </p>
             </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-4 text-base-content">Company</h3>
-              <ul className="space-y-2 font-serif">
-                <li><Link to="/about" className="link link-hover text-base-content">About us</Link></li>
-                <li><Link to="/contact" className="link link-hover text-base-content">Contact</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-4 text-base-content">Legal</h3>
-              <ul className="space-y-2 font-serif">
-                <li><Link to="/terms" className="link link-hover text-base-content">Terms of use</Link></li>
-                <li><Link to="/privacy" className="link link-hover text-base-content">Privacy policy</Link></li>
-                <li><Link to="/disclaimer" className="link link-hover text-base-content">Cookie policy</Link></li>
-                <li><Link to="/disclaimer" className="link link-hover text-base-content">Disclaimer</Link></li>
-              </ul>
-            </div>
+            {[
+              {
+                title: 'Explore',
+                links: [
+                  { to: '/athletes', label: 'Athletes' },
+                  { to: '/feed', label: 'Feed' },
+                  { to: '/requests', label: 'Funding requests' },
+                ],
+              },
+              {
+                title: 'Learn',
+                links: [
+                  { to: '/how-it-works', label: 'How it works' },
+                  { to: '/about', label: 'About' },
+                  { to: '/faq', label: 'Help & FAQ' },
+                  { to: '/contact', label: 'Contact' },
+                ],
+              },
+              {
+                title: 'Account & legal',
+                links: [
+                  { to: '/login', label: 'Log in' },
+                  { to: '/register', label: 'Sign up' },
+                  { to: '/terms', label: 'Terms of use' },
+                  { to: '/privacy', label: 'Privacy policy' },
+                  { to: '/disclaimer', label: 'Disclaimer' },
+                ],
+              },
+            ].map((column) => (
+              <div key={column.title}>
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-[#FF8A4C]">{column.title}</h3>
+                <ul className="space-y-2">
+                  {column.links.map((link) => (
+                    <li key={link.to}>
+                      <Link to={link.to} className="text-white/90 transition-colors hover:text-white hover:underline">{link.label}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <div className="divider" />
-          <p className="text-center text-base-content font-serif">© 2025 Athylift. All rights reserved.</p>
+          <div className="mt-10 border-t border-white/15 pt-6 text-center text-sm text-white/75">
+            © {new Date().getFullYear()} Athylift. All rights reserved.
+          </div>
         </div>
       </footer>
     </div>

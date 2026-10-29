@@ -77,7 +77,7 @@ const Contact = () => {
             </div>
             <h1 className="text-5xl font-brand tracking-wide text-primary mb-4">Get in Touch</h1>
             <p className={`text-xl font-serif ${mutedTextClass}`}>
-              Have a question or feedback? We'd love to hear from you
+              Questions about supporting an athlete or asking for support? We'd love to hear from you
             </p>
           </div>
 
@@ -172,12 +172,12 @@ const Contact = () => {
 
               <div className="card bg-primary text-primary-foreground">
                 <div className="card-body">
-                  <h3 className="card-title mb-4">Business Inquiries</h3>
+                  <h3 className="card-title mb-4">Partnerships</h3>
                   <p className="mb-4">
-                    Interested in partnerships or sponsorships? Reach out to our business team.
+                    Organisations, academies and sponsors who want to support athletes at scale can reach our partnerships team.
                   </p>
                   <a href="mailto:business@athylift.com" className="btn bg-base-100 text-primary hover:bg-base-100/90 border-none">
-                    Contact Business Team
+                    Contact Partnerships
                   </a>
                 </div>
               </div>

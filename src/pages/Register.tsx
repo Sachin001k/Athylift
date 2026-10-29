@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/Navbar';
@@ -9,9 +9,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   // Carries the page the user originally asked for (set by ProtectedRoute) through Login <-> Register.
   const fromState = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/explore';
+  const redirectTo = fromState?.pathname ? `${fromState.pathname}${fromState.search ?? ''}` : '/dashboard';
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -21,7 +22,8 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('Parent');
+  // ?role=athlete or ?role=donor (from the Home and About CTAs) preselects the role.
+  const [role, setRole] = useState(searchParams.get('role') === 'athlete' ? 'athlete' : 'donor');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -92,7 +94,7 @@ const Register = () => {
 
     toast({
       title: 'Account created!',
-      description: 'Welcome to Athylift community',
+      description: 'Welcome to Athylift',
     });
 
     navigate(redirectTo, { replace: true });
@@ -121,12 +123,12 @@ const Register = () => {
             <div className={`h-full w-full p-12 flex flex-col justify-center text-white`}>
               <h2 className="text-4xl font-brand tracking-wide mb-4">Join Athylift</h2>
               <p className={`text-lg font-serif mb-6 ${mutedTextClass}`}>
-                Build your profile, share your journey, and connect with a trusted parenting community.
+                Athletes share their journeys and funding needs. Donors discover them and help break financial barriers.
               </p>
               <ul className={`space-y-3 ${isDark ? 'text-white/90' : 'text-base-100/90'}`}>
-                <li>• Set your audience and privacy preferences</li>
-                <li>• Add topics and hashtags you care about</li>
-                <li>• Manage notifications curated for you</li>
+                <li>• Athletes: showcase achievements, goals and support requests</li>
+                <li>• Donors: explore athletes and back the needs you care about</li>
+                <li>• Everyone: follow sporting journeys as they grow</li>
               </ul>
             </div>
           </div>
@@ -135,7 +137,7 @@ const Register = () => {
             <div className="text-center mb-6">
               <h2 className="text-3xl font-brand tracking-wide mb-2 text-primary">Create your account</h2>
               <p className={`${mutedTextClass} font-serif`}>
-                A few details to personalize your experience.
+                Tell us whether you're an athlete or a donor.
               </p>
             </div>
 
@@ -185,17 +187,15 @@ const Register = () => {
 
               <div className="form-control">
                 <label className="label">
-                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>Role</span>
+                  <span className={`label-text ${isDark ? 'text-white' : ''}`}>I am joining as</span>
                 </label>
                 <select
                   className="select select-bordered w-full"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                 >
-                  <option value="Parent">Parent</option>
-                  <option value="Caregiver">Caregiver</option>
-                  <option value="Therapist / Expert">Therapist / Expert</option>
-                  <option value="Supporter">Supporter</option>
+                  <option value="athlete">An athlete looking for support</option>
+                  <option value="donor">A donor who wants to support athletes</option>
                 </select>
               </div>
 
@@ -231,7 +231,7 @@ const Register = () => {
 
               <label className="label cursor-pointer justify-start gap-3">
                 <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" required />
-                <span className={`label-text ${isDark ? 'text-white' : ''}`}>I agree to terms and privacy policy</span>
+                <span className={`label-text ${isDark ? 'text-white' : ''}`}>I agree to the terms and privacy policy</span>
               </label>
 
               <button
