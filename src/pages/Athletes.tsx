@@ -4,7 +4,8 @@ import { MapPin, Search } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AthleteBadges } from '@/components/fundraising/AthleteBadges';
 import { supabase } from '@/lib/supabaseClient';
-import { ATHLETE_COLUMNS, AthleteSummary, avatarFor, SPORTS } from '@/lib/athylift';
+import { ATHLETE_COLUMNS, AthleteSummary, SPORTS } from '@/lib/athylift';
+import { UserAvatar } from '@/components/UserAvatar';
 
 // PostgREST treats * as a wildcard with no escape, so it is dropped; LIKE wildcards are escaped.
 const escapeLike = (value: string) => value.replace(/[*,()]/g, '').replace(/[\\%_]/g, (char) => `\\${char}`);
@@ -84,7 +85,7 @@ const Athletes = () => {
 
         {loading ? (
           <div className="flex justify-center py-10"><span className="loading loading-spinner loading-lg text-primary" /></div>
-        ) : athletes.length === 0 ? (
+        ) : error ? null : athletes.length === 0 ? (
           <div className="card bg-base-100 border border-dashed border-base-300">
             <div className="card-body items-center text-center">
               <p className="font-semibold">{q || sport ? 'No athletes match these filters.' : 'No athletes have joined yet.'}</p>
@@ -105,7 +106,7 @@ const Athletes = () => {
               >
                 <div className="card-body p-5 gap-3">
                   <div className="flex items-center gap-4">
-                    <img src={avatarFor(athlete.id, athlete.avatar_url)} alt="" className="h-16 w-16 rounded-full object-cover bg-base-200" />
+                    <UserAvatar id={athlete.id} name={athlete.full_name} url={athlete.avatar_url} className="h-16 w-16" textClassName="text-xl" />
                     <div className="min-w-0">
                       <h2 className="font-semibold text-lg truncate">{athlete.full_name || 'Athlete'}</h2>
                       <p className="text-sm text-base-content/70 truncate">

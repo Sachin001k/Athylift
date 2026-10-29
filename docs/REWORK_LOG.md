@@ -149,3 +149,30 @@ Routes: `/athletes`, `/athletes/:id`, `/feed` (public; `/explore` redirects), `/
 ### Not verified
 
 SQL is syntax-checked (pglast) but not yet applied: `.env` has no `SUPABASE_DB_URL` / `SUPABASE_ACCESS_TOKEN`. Pages using new tables will error until it is applied.
+
+## Review fixes, UI pass and e2e test (2026-10-29)
+
+### Bug review (independent read-only reviewer) — fixed
+| # | Issue | Fix |
+| --- | --- | --- |
+| 1 | Role could be switched via API after onboarding, breaking requests and the future webhook's funded update | `profiles_role_guard` trigger; request guard only checks role when the athlete is acting |
+| 2 | Editing a request left the feed post stale; replacing the photo broke its image | `support_requests_sync_post` trigger |
+| 3 | Users with no profile row looped on onboarding | Onboarding updates, then inserts if 0 rows |
+| 4 | Past deadline blocked "Save changes" | `min` date only for new requests |
+| 5 | Athlete role alone (before onboarding) could publish; active→draft left a public post | Guard requires `onboarding_complete`; unpublishing refused |
+| 6 | Totals view / RPC exposed other athletes' drafts | View filters drafts; RPC not callable by clients |
+| 7 | Logged-in users without a role hit a dead end on requests | Link to onboarding |
+| 8 | Onboarding ignored the page the user was heading to | Honours `state.from` |
+| 9 | Stale profile response after switching users; transient error bounced users to onboarding | Ref guard; errors keep previous state |
+| 10 | Donors could add achievements; refunds never un-funded; deadline shown a day early in some timezones | Athlete-only policy; refund reopens; local date parsing |
+
+Not fixed: unlimited pledges can spam athlete notifications (rate limiting needs a server).
+
+### UI
+- Avatars: cartoon dicebear avatars replaced by `UserAvatar` (photo, else initials on a colour badge; no external service).
+- Light theme rebuilt on spec tokens (navy/white/orange; previous light theme used #86888A page background and #313335 footer with black text). Dark theme retuned. Fonts: Barlow / Barlow Condensed; body weight 300 → 400.
+- Home redesigned: animated hero (track lanes, running streaks, floating request preview), clickable sports ticker, scroll-reveal sections, hover motion, live funding requests (real data only), navy values and footer. `prefers-reduced-motion` disables animation.
+- Navbar fits 360px screens. Checked via Chrome DevTools emulation at 390px (no horizontal scroll) and 1280/1440px, light and dark.
+
+### E2E
+`scripts/e2e-test.mjs` (`npm run test:e2e`, `-- --cleanup`). Not yet run: schema not applied.

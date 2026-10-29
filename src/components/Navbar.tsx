@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface NavbarProps {
   // Pages with a sidebar (Layout) toggle it here; other pages get a built-in mobile menu.
@@ -120,8 +120,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-base-100/90 backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {onMenuClick ? (
             <button
               onClick={onMenuClick}
@@ -152,10 +152,10 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             </DropdownMenu>
           )}
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
-            <span className="text-2xl font-brand text-primary tracking-wide">Athylift</span>
+            <span className="text-xl sm:text-2xl font-brand font-bold uppercase text-primary tracking-wide">Athylift</span>
           </Link>
         </div>
 
@@ -183,10 +183,10 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </form>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="btn btn-ghost btn-circle text-base-content">
+              <button className="btn btn-ghost btn-circle btn-sm sm:btn-md text-base-content" aria-label="Change theme">
                 {getThemeIcon()}
               </button>
             </DropdownMenuTrigger>
@@ -241,23 +241,19 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             // Same size as the avatar button, so nothing shifts while the session is checked.
             <div className="h-12 w-12" aria-hidden="true" />
           ) : !user ? (
-            <div className="flex items-center gap-2">
-              <Link to="/login" className="btn btn-ghost">Log in</Link>
-              <Link to="/register" className="btn btn-primary text-white">Sign up</Link>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link to="/login" className="btn btn-ghost btn-sm sm:btn-md">Log in</Link>
+              <Link to="/register" className="btn btn-primary btn-sm sm:btn-md text-white">Sign up</Link>
             </div>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="btn btn-ghost btn-circle avatar">
-                  <Avatar>
-                    <AvatarImage
-                      src={
-                        profileAvatar ||
-                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id || 'athlete'}`
-                      }
-                    />
-                    <AvatarFallback>{(user.email || 'AT').slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    id={user.id}
+                    name={(user.user_metadata?.full_name as string | undefined) || user.email}
+                    url={profileAvatar}
+                  />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-base-100 text-base-content border-base-300">

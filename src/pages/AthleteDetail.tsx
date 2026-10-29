@@ -11,12 +11,12 @@ import {
   Achievement,
   ATHLETE_COLUMNS,
   AthleteSummary,
-  avatarFor,
   fetchTotals,
   REQUEST_COLUMNS,
   RequestTotals,
   SupportRequest,
 } from '@/lib/athylift';
+import { UserAvatar } from '@/components/UserAvatar';
 
 type PostPreview = { id: string; content: string | null; post_type: string; created_at: string };
 
@@ -101,10 +101,12 @@ const AthleteDetail = () => {
           />
           <div className="card-body pt-0">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
-              <img
-                src={avatarFor(athlete.id, athlete.avatar_url)}
-                alt=""
-                className="h-28 w-28 rounded-full border-4 border-base-100 object-cover bg-base-200"
+              <UserAvatar
+                id={athlete.id}
+                name={athlete.full_name}
+                url={athlete.avatar_url}
+                className="h-28 w-28 border-4 border-base-100"
+                textClassName="text-3xl"
               />
               <div className="flex-1">
                 <h1 className="text-3xl font-bold">{athlete.full_name || 'Athlete'}</h1>

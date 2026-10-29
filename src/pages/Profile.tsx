@@ -5,10 +5,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { PROFILE_BUCKET, removeStoredFile, storagePathFromPublicUrl, userFilePath } from '@/lib/storage';
+import { UserAvatar } from '@/components/UserAvatar';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_COVER = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200';
-const DEFAULT_AVATAR = 'https://api.dicebear.com/7.x/avataaars/svg?seed=athlete';
 
 type ProfileRecord = {
   full_name: string | null;
@@ -30,7 +30,7 @@ const Profile = () => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [youtubeInput, setYoutubeInput] = useState('');
   const [coverImage, setCoverImage] = useState(DEFAULT_COVER);
-  const [profileImage, setProfileImage] = useState(DEFAULT_AVATAR);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -58,7 +58,7 @@ const Profile = () => {
         setPhone(record.phone || '');
         setYoutubeUrl(record.youtube_url || '');
         setCoverImage(record.cover_url || DEFAULT_COVER);
-        setProfileImage(record.avatar_url || DEFAULT_AVATAR);
+        setProfileImage(record.avatar_url || null);
       }
       const { data: postImages, error: galleryError } = await supabase
         .from('posts')
@@ -255,9 +255,13 @@ const Profile = () => {
 
             <div className="absolute -bottom-16 left-8">
               <div className="avatar relative group">
-                <div className="w-32 rounded-full ring ring-base-100 ring-offset-base-100 ring-offset-2">
-                  <img src={profileImage} alt="Profile" />
-                </div>
+                <UserAvatar
+                  id={user?.id}
+                  name={name || user?.email}
+                  url={profileImage}
+                  className="w-32 h-32 ring ring-base-100 ring-offset-base-100 ring-offset-2"
+                  textClassName="text-4xl"
+                />
                 <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                   <input
                     type="file"

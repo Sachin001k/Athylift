@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { HandHeart, Loader2, Trophy } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,9 @@ import { asRole, Role, SPORTS } from '@/lib/athylift';
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const routerLocation = useLocation();
+  // ProtectedRoute sends users here with the page they were trying to open.
+  const from = (routerLocation.state as { from?: { pathname?: string; search?: string } } | null)?.from;
   const { toast } = useToast();
   const { user, onboardingComplete, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -76,10 +79,13 @@ const Onboarding = () => {
             is_minor: isMinor,
           }
         : {};
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role, full_name: fullName.trim(), bio: bio.trim() || null, onboarding_complete: true, ...athleteFields })
-      .eq('id', user.id);
+    const fields = { role, full_name: fullName.trim(), bio: bio.trim() || null, onboarding_complete: true, ...athleteFields };
+    const { data: updated, error: updateError } = await supabase.from('profiles').update(fields).eq('id', user.id).select('id');
+    let error = updateError;
+    // Accounts created before the profile trigger existed have no row yet.
+    if (!error && (!updated || updated.length === 0)) {
+      ({ error } = await supabase.from('profiles').insert({ id: user.id, ...fields }));
+    }
     setSaving(false);
 
     if (error) {
@@ -88,7 +94,8 @@ const Onboarding = () => {
     }
     await refreshProfile();
     toast({ title: onboardingComplete ? 'Profile updated' : 'Welcome to Athylift' });
-    navigate('/dashboard', { replace: true });
+    const target = from?.pathname && from.pathname !== '/onboarding' ? `${from.pathname}${from.search ?? ''}` : '/dashboard';
+    navigate(target, { replace: true });
   };
 
   return (

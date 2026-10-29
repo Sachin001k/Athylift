@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { asRole, Role } from '@/lib/athylift';
@@ -33,6 +33,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const user = session?.user ?? null;
   const userId = user?.id ?? null;
+  // The latest user a profile load was started for; older responses are dropped.
+  const currentUserRef = useRef<string | null>(null);
+  currentUserRef.current = userId;
 
   useEffect(() => {
     // getSession reads the stored session locally, so this is fast and needs no network round trip.
@@ -64,8 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', userId)
         .eq('is_read', false),
     ]);
-    if (profileError) console.warn('Could not load profile:', profileError.message);
-    else {
+    if (currentUserRef.current !== userId) return;
+    if (profileError) {
+      // Keep whatever was known; a blip shouldn't bounce a set-up user to onboarding.
+      console.warn('Could not load profile:', profileError.message);
+    } else {
       setAvatarUrl(profile?.avatar_url || null);
       setRole(asRole(profile?.role));
       setOnboardingComplete(Boolean(profile?.onboarding_complete));

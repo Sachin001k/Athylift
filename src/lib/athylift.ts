@@ -111,9 +111,6 @@ export const formatMoney = (amount: number, currency = 'INR') => {
   }
 };
 
-export const avatarFor = (id: string, url: string | null | undefined) =>
-  url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(id)}`;
-
 const EMPTY_TOTALS = (requestId: string): RequestTotals => ({
   request_id: requestId,
   amount_raised: 0,

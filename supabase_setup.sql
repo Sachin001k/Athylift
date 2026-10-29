@@ -515,6 +515,23 @@ begin
   return new;
 end$$;
 
+-- A role is fixed once onboarding is complete; only the service role (admin tooling) may change it.
+create or replace function public.profiles_role_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.role is distinct from old.role
+     and old.role is not null and old.onboarding_complete
+     and coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'Your role can''t be changed after onboarding. Contact support.';
+  end if;
+  return new;
+end$$;
+
+drop trigger if exists profiles_role_guard on public.profiles;
+create trigger profiles_role_guard
+  before update on public.profiles
+  for each row execute function public.profiles_role_guard();
+
 -- location and academy are not in the public column grant: the directory view hides them for minors.
 grant select (sport, discipline, goals, is_minor, verification_status, is_sample, onboarding_complete)
   on public.profiles to anon, authenticated;
@@ -599,6 +616,7 @@ select r.id as request_id,
        coalesce(sum(d.amount) filter (where d.status = 'pledged'), 0) as amount_pledged
   from public.support_requests r
   left join public.donations d on d.request_id = r.id
+ where r.status <> 'draft' or r.athlete_id = auth.uid()
  group by r.id;
 
 revoke all on public.support_request_totals from anon, authenticated;
@@ -608,8 +626,13 @@ grant select on public.support_request_totals to anon, authenticated;
 create or replace function public.support_request_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from public.profiles where id = new.athlete_id and role = 'athlete') then
-    raise exception 'Only athletes can post support requests';
+  -- Only checked when the athlete is the one acting, so database/webhook updates (funded) still work.
+  if auth.uid() = new.athlete_id
+     and not exists (select 1 from public.profiles where id = new.athlete_id and role = 'athlete' and onboarding_complete) then
+    raise exception 'Only athletes who have completed their profile can post support requests';
+  end if;
+  if tg_op = 'UPDATE' and old.status <> 'draft' and new.status = 'draft' then
+    raise exception 'A published request can be closed, but not turned back into a draft';
   end if;
   if new.status = 'funded' and (tg_op = 'INSERT' or old.status <> 'funded')
      and public.request_amount_raised(new.id) < new.target_amount then
@@ -648,6 +671,23 @@ create trigger support_requests_publish
   after insert or update of status on public.support_requests
   for each row execute function public.on_support_request_published();
 
+-- Keeps the announcing feed post in step when the athlete edits the request or its photo.
+create or replace function public.on_support_request_edited()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  update public.posts
+     set content = left(new.title || E'\n\n' || new.description, 5000),
+         attachment_kind = case when new.image_url is not null then 'image' end,
+         attachment_url = new.image_url
+   where support_request_id = new.id;
+  return new;
+end$$;
+
+drop trigger if exists support_requests_sync_post on public.support_requests;
+create trigger support_requests_sync_post
+  after update of title, description, image_url on public.support_requests
+  for each row execute function public.on_support_request_edited();
+
 -- Pledges notify the athlete; a paid donation that reaches the target marks the request funded.
 create or replace function public.on_request_donation_change()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -670,6 +710,9 @@ begin
     update public.support_requests set status = 'funded' where id = r.id;
     insert into public.notifications (user_id, title, body)
     values (r.athlete_id, 'Request funded', '"' || r.title || '" reached its target');
+  elsif r.status = 'funded' and public.request_amount_raised(r.id) < r.target_amount then
+    -- A refund took it back under target.
+    update public.support_requests set status = 'active' where id = r.id;
   end if;
   return new;
 end$$;
@@ -698,8 +741,9 @@ grant delete on public.support_requests to authenticated;
 
 grant insert (request_id) on public.donations to authenticated;
 
-revoke all on function public.request_amount_raised(uuid) from public;
-grant execute on function public.request_amount_raised(uuid) to anon, authenticated;
+revoke all on function public.request_amount_raised(uuid) from public, anon, authenticated;
+revoke all on function public.profiles_role_guard() from public, anon, authenticated;
+revoke all on function public.on_support_request_edited() from public, anon, authenticated;
 revoke all on function public.support_request_guard() from public, anon, authenticated;
 revoke all on function public.on_support_request_published() from public, anon, authenticated;
 revoke all on function public.on_request_donation_change() from public, anon, authenticated;
@@ -714,7 +758,10 @@ drop policy if exists "achievements: delete own" on public.achievements;
 create policy "achievements: public read" on public.achievements
   for select using (true);
 create policy "achievements: insert own" on public.achievements
-  for insert to authenticated with check (athlete_id = auth.uid());
+  for insert to authenticated with check (
+    athlete_id = auth.uid()
+    and exists (select 1 from public.profiles where id = auth.uid() and role = 'athlete')
+  );
 create policy "achievements: update own" on public.achievements
   for update to authenticated using (athlete_id = auth.uid()) with check (athlete_id = auth.uid());
 create policy "achievements: delete own" on public.achievements

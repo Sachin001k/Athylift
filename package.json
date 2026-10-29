@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "db:setup": "node scripts/setup-db.mjs",
-    "db:keep-alive": "node scripts/keep-alive.mjs"
+    "db:keep-alive": "node scripts/keep-alive.mjs",
+    "test:e2e": "node scripts/e2e-test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

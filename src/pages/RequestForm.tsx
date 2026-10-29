@@ -199,7 +199,7 @@ const RequestForm = () => {
 
             <label className="form-control sm:w-1/2">
               <span className="label-text mb-1">Needed by (optional)</span>
-              <input type="date" className="input input-bordered" value={deadline} onChange={(e) => setDeadline(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
+              <input type="date" className="input input-bordered" value={deadline} onChange={(e) => setDeadline(e.target.value)} min={existing ? undefined : new Date().toISOString().slice(0, 10)} />
             </label>
 
             <div>

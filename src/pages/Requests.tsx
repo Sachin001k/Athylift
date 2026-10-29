@@ -107,7 +107,7 @@ const Requests = () => {
 
         {loading ? (
           <div className="flex justify-center py-10"><span className="loading loading-spinner loading-lg text-primary" /></div>
-        ) : requests.length === 0 ? (
+        ) : error ? null : requests.length === 0 ? (
           <div className="card bg-base-100 border border-dashed border-base-300">
             <div className="card-body items-center text-center">
               <p className="font-semibold">{filtered ? 'No funding requests match these filters.' : 'No funding requests yet.'}</p>

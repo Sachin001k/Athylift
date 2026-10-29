@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, WheelEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Heart, MessageCircle, Share2, Play, HandHeart, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
+import { UserAvatar } from '@/components/UserAvatar';
 
 type FeedPost = {
   id: string;
@@ -415,15 +415,11 @@ const Explore = () => {
                 {/* Author Header */}
                 <div className="flex items-center justify-start mb-3">
                   <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage
-                        src={
-                          profileMap[post.user_id || '']?.avatar_url ||
-                          `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user_id || 'member'}`
-                        }
-                      />
-                      <AvatarFallback>US</AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      id={post.user_id}
+                      name={profileMap[post.user_id || '']?.full_name}
+                      url={profileMap[post.user_id || '']?.avatar_url}
+                    />
                     <div>
                       {profileMap[post.user_id || '']?.role === 'athlete' ? (
                         <Link to={`/athletes/${post.user_id}`} className="font-semibold hover:text-primary">
@@ -662,15 +658,13 @@ const Explore = () => {
                 {(comments[commentModalPostId] || []).map((c) => (
                   <div key={c.id} className="rounded-lg border border-base-300 p-3 text-sm space-y-1">
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={
-                            profileMap[c.user_id || '']?.avatar_url ||
-                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.user_id || 'anon'}`
-                          }
-                        />
-                        <AvatarFallback>US</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        id={c.user_id}
+                        name={profileMap[c.user_id || '']?.full_name}
+                        url={profileMap[c.user_id || '']?.avatar_url}
+                        className="h-8 w-8"
+                        textClassName="text-xs"
+                      />
                       <div className="flex flex-col">
                         <p className="font-semibold">
                           {profileMap[c.user_id || '']?.full_name || (c.user_id ? 'Member' : 'Anon')}

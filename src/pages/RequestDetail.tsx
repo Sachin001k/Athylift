@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabaseClient';
 import {
   ATHLETE_COLUMNS,
   AthleteSummary,
-  avatarFor,
   categoryLabel,
   fetchTotals,
   formatMoney,
@@ -20,6 +19,7 @@ import {
   STATUS_LABELS,
   SupportRequest,
 } from '@/lib/athylift';
+import { UserAvatar } from '@/components/UserAvatar';
 
 const MAX_PLEDGE = 1000000;
 
@@ -149,6 +149,13 @@ const RequestDetail = () => {
         </Link>
       );
     }
+    if (!role) {
+      return (
+        <Link to="/onboarding" state={{ from: location }} className="btn btn-secondary text-white w-full">
+          Finish your profile to support
+        </Link>
+      );
+    }
     if (role !== 'donor') {
       return <p className="text-sm text-base-content/70">Support requests can be backed from a donor account.</p>;
     }
@@ -189,7 +196,7 @@ const RequestDetail = () => {
           <h1 className="text-3xl font-bold">{request.title}</h1>
           {athlete && (
             <Link to={`/athletes/${athlete.id}`} className="flex items-center gap-3 group">
-              <img src={avatarFor(athlete.id, athlete.avatar_url)} alt="" className="h-12 w-12 rounded-full object-cover bg-base-200" />
+              <UserAvatar id={athlete.id} name={athlete.full_name} url={athlete.avatar_url} className="h-12 w-12" />
               <div>
                 <p className="font-semibold group-hover:text-primary">{athlete.full_name || 'Athlete'}</p>
                 <p className="text-sm text-base-content/70">{[athlete.sport, athlete.discipline].filter(Boolean).join(' · ')}</p>
@@ -216,7 +223,7 @@ const RequestDetail = () => {
               <FundingProgress target={Number(request.target_amount)} currency={request.currency} totals={totals} />
               {request.deadline && (
                 <p className="text-sm text-base-content/70 flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" /> Needed by {new Date(request.deadline).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                  <CalendarDays className="h-4 w-4" /> Needed by {new Date(`${request.deadline}T00:00:00`).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                 </p>
               )}
               {supportPanel()}
