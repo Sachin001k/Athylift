@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -37,6 +37,7 @@ type NotificationItem = {
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { toast } = useToast();
   // Shared across pages, so the header keeps its state while navigating.
   const {
@@ -138,7 +139,15 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Link to="/" className="flex items-center gap-2" aria-label="Athylift home">
+          <Link
+            to="/"
+            className="flex items-center gap-2"
+            aria-label="Athylift home"
+            onClick={() => {
+              // Already home: the route doesn't change, so scroll back to the top ourselves.
+              if (pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
             <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-primary shadow-md">
               <span className="text-xl font-brand text-white tracking-wide">A</span>
             </div>
