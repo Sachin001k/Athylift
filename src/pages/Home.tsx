@@ -24,7 +24,6 @@ import {
   fetchTotals,
   REQUEST_COLUMNS,
   RequestTotals,
-  SPORTS,
   SupportRequest,
 } from '@/lib/athylift';
 
@@ -190,23 +189,6 @@ const Home = () => {
           <div className="animate-rise-in" style={{ animationDelay: '0.3s' }}>
             <TrackGraphic />
           </div>
-        </div>
-      </section>
-
-      {/* Sports ticker: hover pauses it, each sport opens the filtered directory */}
-      <section className="overflow-hidden bg-[#FF6B1A] py-3 text-[#0F1E3D]" aria-label="Sports on Athylift">
-        <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
-          {[...SPORTS, ...SPORTS].map((sport, idx) => (
-            <Link
-              key={`${sport}-${idx}`}
-              to={`/athletes?sport=${encodeURIComponent(sport)}`}
-              className="mx-5 whitespace-nowrap font-brand text-xl font-bold uppercase tracking-wide hover:underline"
-              tabIndex={idx < SPORTS.length ? 0 : -1}
-              aria-hidden={idx >= SPORTS.length}
-            >
-              {sport} <span className="ml-5 opacity-60">•</span>
-            </Link>
-          ))}
         </div>
       </section>
 

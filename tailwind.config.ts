@@ -94,10 +94,6 @@ export default {
             height: "0",
           },
         },
-        marquee: {
-          from: { transform: "translateX(0)" },
-          to: { transform: "translateX(-50%)" },
-        },
         "rise-in": {
           from: { opacity: "0", transform: "translateY(24px)" },
           to: { opacity: "1", transform: "translateY(0)" },
@@ -114,7 +110,6 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        marquee: "marquee 40s linear infinite",
         "rise-in": "rise-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both",
         float: "float 6s ease-in-out infinite",
         grow: "grow 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) both",
