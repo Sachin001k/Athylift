@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Reveal } from '@/components/Reveal';
+import { useAuth } from '@/contexts/AuthContext';
 import { RequestCard } from '@/components/fundraising/RequestCard';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -116,6 +117,14 @@ const TrackGraphic = () => (
 );
 
 const Home = () => {
+  const { user, role } = useAuth();
+  // Logged-in visitors get next steps for their role instead of sign-up prompts.
+  const roleAction =
+    role === 'athlete'
+      ? { to: '/requests/new', label: 'Post a support request' }
+      : role === 'donor'
+        ? { to: '/requests', label: 'Browse funding requests' }
+        : { to: '/onboarding', label: 'Finish your profile' };
   const [requests, setRequests] = useState<SupportRequest[]>([]);
   const [athletes, setAthletes] = useState<Record<string, AthleteSummary>>({});
   const [totals, setTotals] = useState<Record<string, RequestTotals>>({});
@@ -176,13 +185,16 @@ const Home = () => {
                 Explore athletes
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
-              <Link to="/register?role=donor" className="btn btn-lg btn-outline border-white text-white hover:border-white hover:bg-white hover:text-[#0F1E3D]">
-                Become a donor
+              <Link
+                to={user ? roleAction.to : '/register?role=donor'}
+                className="btn btn-lg btn-outline border-white text-white hover:border-white hover:bg-white hover:text-[#0F1E3D]"
+              >
+                {user ? roleAction.label : 'Become a donor'}
               </Link>
             </div>
             <p className="mt-5 animate-rise-in" style={{ animationDelay: '0.7s' }}>
-              <Link to="/register?role=athlete" className="link font-medium text-white/90 hover:text-[#FF8A4C]">
-                Get support as an athlete →
+              <Link to={user ? '/dashboard' : '/register?role=athlete'} className="link font-medium text-white/90 hover:text-[#FF8A4C]">
+                {user ? 'Go to your dashboard →' : 'Get support as an athlete →'}
               </Link>
             </p>
           </div>
@@ -257,7 +269,9 @@ const Home = () => {
             <Reveal className="rounded-2xl border-2 border-dashed border-base-300 p-10 text-center">
               <p className="text-lg font-semibold">No open requests yet.</p>
               <p className="mt-1 text-base-content/80">Athletes' support requests will appear here as soon as they're posted.</p>
-              <Link to="/register?role=athlete" className="btn btn-primary mt-5">Create an athlete profile</Link>
+              <Link to={role === 'athlete' ? '/requests/new' : '/register?role=athlete'} className="btn btn-primary mt-5">
+                {role === 'athlete' ? 'Post a support request' : 'Create an athlete profile'}
+              </Link>
             </Reveal>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -306,7 +320,12 @@ const Home = () => {
                 Build a profile, share your achievements and goals, and post what you need help funding: equipment, coaching, training or academy fees.
               </p>
               <div className="relative mt-6 flex flex-wrap gap-3">
-                <Link to="/register?role=athlete" className="btn border-none bg-[#FF6B1A] text-[#0F1E3D] hover:bg-[#FF8A4C]">Create an athlete profile</Link>
+                <Link
+                  to={role === 'athlete' ? `/athletes/${user?.id}` : '/register?role=athlete'}
+                  className="btn border-none bg-[#FF6B1A] text-[#0F1E3D] hover:bg-[#FF8A4C]"
+                >
+                  {role === 'athlete' ? 'View your profile' : 'Create an athlete profile'}
+                </Link>
                 <Link to="/requests/new" className="btn btn-outline border-white text-white hover:border-white hover:bg-white hover:text-secondary">Post a support request</Link>
               </div>
             </div>
@@ -321,7 +340,9 @@ const Home = () => {
               </p>
               <div className="relative mt-6 flex flex-wrap gap-3">
                 <Link to="/requests" className="btn border-none bg-white text-primary hover:bg-white/90">Browse funding requests</Link>
-                <Link to="/register?role=donor" className="btn btn-outline border-white text-white hover:border-white hover:bg-white hover:text-primary">Become a donor</Link>
+                {!user && (
+                  <Link to="/register?role=donor" className="btn btn-outline border-white text-white hover:border-white hover:bg-white hover:text-primary">Become a donor</Link>
+                )}
               </div>
             </div>
           </Reveal>
@@ -335,14 +356,18 @@ const Home = () => {
             Be part of the <span className="text-primary">next podium</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-base-content/85">
-            Join Athylift as an athlete looking for support, or as a donor ready to help one take the next step.
+            {user
+              ? role === 'athlete'
+                ? 'Share your next goal and let donors see exactly what support will make possible.'
+                : 'Find an athlete whose journey you believe in and help them take the next step.'
+              : 'Join Athylift as an athlete looking for support, or as a donor ready to help one take the next step.'}
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link to="/register" className="group btn btn-lg btn-primary">
-              Sign up
+            <Link to={user ? roleAction.to : '/register'} className="group btn btn-lg btn-primary">
+              {user ? roleAction.label : 'Sign up'}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link to="/login" className="btn btn-lg btn-outline">Log in</Link>
+            <Link to={user ? '/dashboard' : '/login'} className="btn btn-lg btn-outline">{user ? 'Go to dashboard' : 'Log in'}</Link>
           </div>
         </Reveal>
       </section>
@@ -377,8 +402,9 @@ const Home = () => {
               {
                 title: 'Account & legal',
                 links: [
-                  { to: '/login', label: 'Log in' },
-                  { to: '/register', label: 'Sign up' },
+                  ...(user
+                    ? [{ to: '/dashboard', label: 'Dashboard' }, { to: '/profile', label: 'Account settings' }]
+                    : [{ to: '/login', label: 'Log in' }, { to: '/register', label: 'Sign up' }]),
                   { to: '/terms', label: 'Terms of use' },
                   { to: '/privacy', label: 'Privacy policy' },
                   { to: '/disclaimer', label: 'Disclaimer' },

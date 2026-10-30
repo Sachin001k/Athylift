@@ -12,6 +12,7 @@ import MyPosts from "./pages/MyPosts";
 import Profile from "./pages/Profile";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { RouteMeta } from "./components/RouteMeta";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import About from "./pages/About";
@@ -51,6 +52,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
+            <RouteMeta />
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/feed" element={<Explore />} />

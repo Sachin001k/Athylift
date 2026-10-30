@@ -6,6 +6,7 @@ import { AthleteBadges } from '@/components/fundraising/AthleteBadges';
 import { FundingProgress } from '@/components/fundraising/FundingProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePageMeta } from '@/lib/seo';
 import { supabase } from '@/lib/supabaseClient';
 import {
   ATHLETE_COLUMNS,
@@ -105,6 +106,19 @@ const RequestDetail = () => {
     const totalMap = await fetchTotals([request.id]);
     setTotals(totalMap[request.id]);
   };
+
+  usePageMeta(
+    loading
+      ? null
+      : request
+        ? {
+            title: request.title,
+            description: `${athlete?.full_name ? `${athlete.full_name}: ` : ''}${request.description}`.slice(0, 160),
+            path: `/requests/${request.id}`,
+            noindex: request.status === 'draft',
+          }
+        : { title: 'Request not found', path: `/requests/${id}`, noindex: true },
+  );
 
   if (loading) {
     return (

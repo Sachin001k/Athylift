@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Trophy, HandHeart, CheckCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Features = () => {
+  const { user } = useAuth();
   const athleteFeatures = [
     'Create a profile with your sport, achievements and goals',
     'Share training updates and results with supporters',
@@ -80,15 +82,25 @@ const Features = () => {
         {/* CTA */}
         <div className="card bg-gradient-to-r from-primary to-secondary text-white">
           <div className="card-body text-center py-12">
-            <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-            <p className="text-xl mb-6">Join as an athlete looking for support, or as a donor ready to help.</p>
+            <h2 className="text-3xl font-bold mb-4">{user ? 'Ready for your next step?' : 'Ready to Get Started?'}</h2>
+            <p className="text-xl mb-6">
+              {user ? 'Pick up where you left off on your dashboard.' : 'Join as an athlete looking for support, or as a donor ready to help.'}
+            </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/register?role=athlete" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
-                Join as an athlete
-              </Link>
-              <Link to="/register?role=donor" className="btn btn-lg btn-outline text-white border-base-100 hover:bg-base-100 hover:text-primary">
-                Become a donor
-              </Link>
+              {user ? (
+                <Link to="/dashboard" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
+                  Go to dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register?role=athlete" className="btn btn-lg bg-base-100 text-primary hover:bg-base-100/90 border-none">
+                    Join as an athlete
+                  </Link>
+                  <Link to="/register?role=donor" className="btn btn-lg btn-outline text-white border-base-100 hover:bg-base-100 hover:text-primary">
+                    Become a donor
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
