@@ -18,6 +18,7 @@ import {
 } from '@/lib/athylift';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CoverArt } from '@/components/CoverArt';
+import { usePageMeta } from '@/lib/seo';
 
 type PostPreview = { id: string; content: string | null; post_type: string; created_at: string };
 
@@ -69,6 +70,19 @@ const AthleteDetail = () => {
       cancelled = true;
     };
   }, [id]);
+
+  usePageMeta(
+    loading
+      ? null
+      : athlete
+        ? {
+            title: [athlete.full_name || 'Athlete', athlete.sport].filter(Boolean).join(' · '),
+            description: (athlete.goals || athlete.bio || `${athlete.full_name} on Athylift`).slice(0, 160),
+            path: `/athletes/${athlete.id}`,
+            noindex: athlete.is_sample,
+          }
+        : { title: 'Athlete not found', path: `/athletes/${id}`, noindex: true },
+  );
 
   if (loading) {
     return (

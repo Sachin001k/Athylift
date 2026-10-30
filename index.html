@@ -6,15 +6,59 @@
     <title>Athylift — Support athletes, break financial barriers</title>
     <meta name="description" content="Athylift connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees." />
     <meta name="author" content="Athylift" />
+    <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0F1E3D" />
+    <link rel="canonical" href="https://athylift.com/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+    <meta property="og:site_name" content="Athylift" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://athylift.com/" />
     <meta property="og:title" content="Athylift — Support athletes, break financial barriers" />
     <meta property="og:description" content="Athylift connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees." />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://athylift.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Athylift: Empowering athletes. Breaking financial barriers." />
+    <meta property="og:locale" content="en_IN" />
 
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Athylift — Support athletes, break financial barriers" />
+    <meta name="twitter:description" content="Athylift connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees." />
+    <meta name="twitter:image" content="https://athylift.com/og-image.png" />
+
+    <!-- Tells Google the brand name and site for "Athylift" searches. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://athylift.com/#organization",
+            "name": "Athylift",
+            "url": "https://athylift.com/",
+            "logo": "https://athylift.com/icon-512.png",
+            "description": "Athylift connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees.",
+            "email": "support@athylift.com"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://athylift.com/#website",
+            "name": "Athylift",
+            "alternateName": ["Athylift.com"],
+            "url": "https://athylift.com/",
+            "publisher": { "@id": "https://athylift.com/#organization" }
+          }
+        ]
+      }
+    </script>
 
     <!-- Apply the saved theme before first paint to avoid a light/dark flash. -->
     <script>
@@ -29,6 +73,10 @@
 
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>Athylift — Empowering athletes. Breaking financial barriers.</h1>
+      <p>Athylift connects underprivileged athletes with donors who help fund equipment, coaching, training and academy fees. Please enable JavaScript to use the site.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

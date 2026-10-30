@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Target, Users, Heart, ArrowRight, Trophy } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 
 const About = () => {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
       <Navbar />
@@ -13,8 +15,8 @@ const About = () => {
           <p className="text-xl font-serif max-w-3xl mx-auto mb-8">
             Athylift is a fundraising and community platform that connects underprivileged athletes with donors who believe in their potential.
           </p>
-          <Link to="/register" className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90">
-            Join Athylift
+          <Link to={user ? '/dashboard' : '/register'} className="btn btn-lg bg-base-100 text-primary border-none hover:bg-base-100/90">
+            {user ? 'Go to dashboard' : 'Join Athylift'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
         </div>
@@ -90,13 +92,22 @@ const About = () => {
             Whether you're an athlete looking for support or a donor who wants to help talent grow, there's a place for you on Athylift.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register?role=athlete" className="btn btn-lg bg-primary text-white border-none hover:bg-primary/80">
-              Join as an athlete
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link to="/register?role=donor" className="btn btn-lg btn-outline btn-primary">
-              Become a donor
-            </Link>
+            {user ? (
+              <Link to="/requests" className="btn btn-lg bg-primary text-white border-none hover:bg-primary/80">
+                Browse funding requests
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            ) : (
+              <>
+                <Link to="/register?role=athlete" className="btn btn-lg bg-primary text-white border-none hover:bg-primary/80">
+                  Join as an athlete
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+                <Link to="/register?role=donor" className="btn btn-lg btn-outline btn-primary">
+                  Become a donor
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
