@@ -74,6 +74,9 @@ const cleanup = async () => {
     console.log(`${delError ? '✗' : '✓'} deleted ${user.email}${delError ? `: ${delError.message}` : ''}`);
   }
   if (users.length === 0) console.log('No e2e test users found.');
+  // The anonymous contact message the test sends isn't tied to a user.
+  const { data: messages } = await admin.from('contact_messages').delete().like('email', 'e2e-%@example.com').select('id');
+  if (messages?.length) console.log(`✓ deleted ${messages.length} e2e contact message(s)`);
 };
 
 if (process.argv.includes('--cleanup')) {
